@@ -2,10 +2,12 @@
 #define _MARKING_IMG_H
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include <android/log.h>
+
 #include <math.h>
 #include <vector>
 #include <list>
-#include <iostream>
 #include <dirent.h>
 #include <sys/stat.h>
 #include <opencv2/opencv.hpp>
@@ -13,7 +15,7 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv/cv.h>
-#include <android/log.h>
+
 using namespace std;
 using namespace cv;
 
@@ -26,5 +28,6 @@ typedef  void(*CALL_BACK_SHOW_FUN)(const unsigned char*,int,int);
 
 void setShowImgFun(CALL_BACK_SHOW_FUN);
 string MarkingImg(int,int,uchar *,const char*);
+string MarkingImg1(int,int,uchar *,const char*);
 
 #endif

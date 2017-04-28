@@ -24,6 +24,7 @@ bool cmp(NumberElement a,NumberElement b)
 
 string  getSubtract(Mat&);
 vector<string> m_vt;
+Mat Operater(Mat &gray);
 
 vector<string> loadfile(const char* dirname)
 {
@@ -122,7 +123,7 @@ string  getSubtract(Mat &src) //两张图片相减
 	return strVal.substr(0,strVal.length()-4);
 }
 
-string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
+string MarkingImg1(int width,int height,uchar *_yuv,const char *dir)
 {
 	string strValues = "";
     Mat myuv(height+height/2, width, CV_8UC1,_yuv);
@@ -135,28 +136,10 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
  	
  	IplImage f = IplImage(o);
  	IplImage *frame = &f; 	
-int iret = cvSaveImage("/storage/emulated/0/data/frame.jpg",frame);
-LOGI("save1 result:%d,w:%d,h:%d",iret,frame->width,frame->height);
-(*pShowImage)((const uchar*)frame->imageData,frame->imageSize,0);
+//int iret = cvSaveImage("/storage/emulated/0/data/frame.jpg",frame);
+//LOGI("save1 result:%d,w:%d,h:%d",iret,frame->width,frame->height);
+//(*pShowImage)((const uchar*)frame->imageData,frame->imageSize,0);
 
-/*
-const char * path = "/storage/sdcard1/carnumber/65_car/car.jpg";  
-IplImage * frame = cvLoadImage(path);  
-LOGI("load file:%s",path);
-if(!frame)
-{
-	LOGD("not fond file");
-	return "not fond file";
-}
-m_vt.clear();
-m_vt = loadfile(dir);
-LOGI("get template size:%d",m_vt.size());
-if(m_vt.size() < 1)
-{
-	LOGI("load template err");
-	return "load template err";	
-}
-*/ 	
  	//均值滤波  
 	cvSmooth(frame, frame, CV_MEDIAN);  
 	//cvSmooth(frame, frame, CV_GAUSSIAN, 3, 3); 
@@ -178,10 +161,6 @@ if(m_vt.size() < 1)
 	//二值化
 	IplImage * threshold = cvCreateImage(cvGetSize(sobel), gray->depth, 1);
 	cvThreshold(sobel, threshold, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
-//cvNamedWindow("threshold", 1);
-//cvShowImage("threshold", threshold);
-iret = cvSaveImage("/storage/emulated/0/data/threshold.jpg",threshold);
-LOGI("save2 result:%d",iret);
 (*pShowImage)((const uchar*)threshold->imageData,threshold->imageSize,1);
 
 	//形态学变化
@@ -198,12 +177,9 @@ LOGI("save2 result:%d",iret);
 	cvErode(morph, morph, kernal, 1);    //y 腐蚀去除碎片
 	cvDilate(morph, morph, kernal, 3);   //y 膨胀回复形态	
 	cvReleaseStructuringElement(&kernal);
-
-//cvNamedWindow("erode", 1);
-//cvShowImage("erode", morph);
-iret = cvSaveImage("/storage/emulated/0/data/morph.jpg",morph);
-LOGI("save3 result:%d",iret);
-(*pShowImage)((const uchar *)morph->imageData,morph->imageSize,2);
+//iret = cvSaveImage("/storage/emulated/0/data/morph.jpg",morph);
+//LOGI("save3 result:%d",iret);
+//(*pShowImage)((const uchar *)morph->imageData,morph->imageSize,2);
 
 	//轮廓检测
 	IplImage *plate_img = NULL; 
@@ -211,19 +187,18 @@ LOGI("save3 result:%d",iret);
 	cvCopy(frame, frame_draw);
 	CvMemStorage * storage = cvCreateMemStorage(0);  
 	CvSeq * contour = 0;   
-	int count = cvFindContours(morph, storage, &contour, sizeof(CvContour), CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE );
+	int count = cvFindContours(morph, storage, &contour, sizeof(CvContour), CV_RETR_EXTERNAL, CV_CHAIN_APPROX_SIMPLE );
 	CvSeq * _contour = contour;   
 	for( ; contour != 0; contour = contour->h_next )  
 	{  		
-		double tmparea = fabs(cvContourArea(contour));  		 
-		CvRect aRect = cvBoundingRect( contour, 0 ); 
-		//cout << "w=" << aRect.width << ",h=" << aRect.height << " x=" << aRect.x << " y=" <<  aRect.y << endl;
+		double tmparea = fabs(cvContourArea(contour));
+		CvRect aRect = cvBoundingRect( contour, 0 );
 		if(tmparea > ((frame->height*frame->width)/10))   
 		{  
 			cvSeqRemove(contour,0); //删除面积小于设定值的轮廓,1/10
 			continue;  
 		} 
-		if (aRect.width < (aRect.height*2))  
+		if (aRect.width < (aRect.height*2))
 		{  
 			cvSeqRemove(contour,0); //删除宽高比例小于设定值的轮廓   
 			continue;  
@@ -238,12 +213,19 @@ LOGI("save3 result:%d",iret);
 			cvSeqRemove(contour,0); //删除宽高比例小于设定值的轮廓   
 			continue;  
 		}
-	
 		if(aRect.width  < 100 || aRect.width > 150)
 		{
 			cvSeqRemove(contour,0); //删除宽小于设定值的轮廓
 			continue;  
 		}
+		//(aRect.x + aRect.width/2,aRect.y + aRect.height/2)   (morph.width/2,morph.height/2)
+		double l = sqrt((aRect.x + aRect.width/2 - morph->width/2) * (aRect.x + aRect.width/2 - morph->width/2) + (aRect.y + aRect.height/2-morph->height/2) * (aRect.y + aRect.height/2-morph->height/2));
+		if( l > 100.0 ) 
+		{
+			cvSeqRemove(contour,0); 
+			continue;
+		}
+		
 		CvScalar color = CV_RGB( 255, 0, 0); 
 		cvDrawContours(frame_draw, contour, color, color, 0, 1, 8 );//绘制外部和内部的轮廓
 		//cout << "last w=" << aRect.width << ",h=" << aRect.height << " x=" << aRect.x << " y=" <<  aRect.y << endl;
@@ -255,25 +237,20 @@ LOGI("save3 result:%d",iret);
 		break;
 	}
 	cvReleaseMemStorage(&storage);
-//cvNamedWindow("frame_draw", 1);
-//cvShowImage("frame_draw", frame_draw);
 
 	if(plate_img == NULL)
 	{
-		//cout << "not fond" << endl;
-		LOGD("not found");
-		//cvWaitKey(65000);
-		
+		LOGD("not found");		
 		cvReleaseImage(&gray);
 		cvReleaseImage(&temp);
 		cvReleaseImage(&threshold);
 		cvReleaseImage(&sobel);
 		cvReleaseImage(&morph);
 		cvReleaseImage(&frame_draw);
-		
 		return strValues;
 	}
-
+	cvSaveImage("/storage/emulated/0/data/morph.jpg",plate_img);
+	
 	//cvSaveImage("1.bmp",plate_img);
 	
 	//灰度图  
@@ -292,7 +269,7 @@ LOGI("save3 result:%d",iret);
 
 //cvNamedWindow("轮廓", 1);
 //cvShowImage("轮廓", thresholdPlate);
-iret = cvSaveImage("/storage/emulated/0/data/thresholdPlate.jpg",morph);
+int iret = cvSaveImage("/storage/emulated/0/data/thresholdPlate.jpg",morph);
 LOGI("save4 result:%d",iret);
 
 	vector<NumberElement> numberVector;
@@ -368,4 +345,119 @@ LOGI("save4 result:%d",iret);
 	cvReleaseImage(&frame_bi);
 	
 	return strValues;
+}
+string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
+{
+	string strValues = "";
+    Mat myuv(height+height/2, width, CV_8UC1,_yuv);
+    Mat mbgr(height, width, CV_8UC3, cv::Scalar(0,0,255));
+    cvtColor(myuv, mbgr, CV_YUV420sp2BGR);
+    
+    Mat t,oriMat;
+ 	transpose(mbgr,t);//转90度
+ 	flip(t,oriMat,1);
+ 	
+ 	Mat w_mat = oriMat.clone();
+ 	Mat gray;
+	cvtColor(w_mat,gray,CV_BGR2GRAY);
+	
+	Mat gray_bi = Operater(gray);
+	if(string(dir) == "true")
+		imwrite("/storage/emulated/0/data/morph.jpg",gray_bi);
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	findContours( gray_bi, contours, hierarchy, 
+	  CV_RETR_EXTERNAL,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
+	  CV_CHAIN_APPROX_SIMPLE, 
+	  Point(0, 0) );
+	
+	vector<vector<Point> >::iterator itc= contours.begin();
+	while (itc!=contours.end()) 
+	{	 
+		double tmparea = fabs(contourArea(*itc));//面积
+		double contLenth =  arcLength(*itc,true);//周长
+		//RotatedRect minRect = minAreaRect(*itc);  
+		//Point2f vertices[4];  
+		//minRect.points(vertices); //获得最小外接矩形4个点
+		
+		//-------最小外接圆------------------- 
+		Point2f center;//圆心  
+		float radius;//半径  
+		minEnclosingCircle(*itc, center, radius);
+		//-------最小外接圆------------------- 
+		Rect rt = boundingRect(*itc);//包含轮廓的矩形
+		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
+		if(l > 20)
+		{
+			itc = contours.erase(itc);
+		}
+		/*
+		else if(radius < 30 || radius > 60)
+			itc = contours.erase(itc);
+		else if(rt.width/rt.height < 1)
+		{
+			itc = contours.erase(itc);
+		}*/
+		else
+		{
+			itc++;
+		}
+	}
+	Mat drawing = Mat::zeros( gray_bi.size(), CV_8UC3 );
+	RNG rng(12345);
+	int i=0;
+	string str = "";
+	for(i=0;i<contours.size();i++)
+	{
+		Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
+		drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+		//-------最小外接圆-------------------  
+		Point2f center;//圆心  
+		float radius;//半径  
+		minEnclosingCircle(contours[i], center, radius); 
+		circle(oriMat,center,radius,color);
+		
+		Rect rt = boundingRect(contours[i]);//包含轮廓的矩形
+		char sTmp[32] = {0};
+		sprintf(sTmp,"%d,%d,%d,%d,",rt.x,rt.y,rt.x + rt.width,rt.y + rt.height);
+		str += sTmp;
+	}
+	char sRet[128] = {0};
+	sprintf(sRet,"%d,%s",i,str.c_str());
+	return sRet;
+}
+
+
+Mat Operater(Mat &gray)
+{
+	//高斯滤波器滤波去噪（可选）
+	int ksize = 3;
+	Mat g_gray;
+	Mat G_kernel = getGaussianKernel(ksize,0.3*((ksize-1)*0.5-1)+0.8);
+	filter2D(gray,g_gray,-1,G_kernel);
+
+	//Sobel算子（x方向和y方向）
+	Mat sobel_x,sobel_y;
+	Sobel(g_gray,sobel_x,CV_16S,1,0,3);
+	Sobel(g_gray,sobel_y,CV_16S,0,1,3);
+	Mat abs_x,abs_y;
+	convertScaleAbs(sobel_x,abs_x);
+	convertScaleAbs(sobel_y,abs_y);
+	Mat grad;
+	addWeighted(abs_x,0.5,abs_y,0.5,0,grad);
+	Mat img_bin;
+	threshold(grad,img_bin,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);	
+	
+   //获取自定义核
+    Mat elementX = getStructuringElement(MORPH_RECT, Size(3, 1));
+    Mat m_ResImg;
+    dilate(img_bin, m_ResImg, elementX,Point(1,0),1);
+	erode(m_ResImg, m_ResImg, elementX,Point(1,0),1);
+	dilate(m_ResImg, m_ResImg, elementX,Point(1,0),1);
+	
+	Mat elementY = getStructuringElement(MORPH_RECT, Size(1, 3));
+	erode(m_ResImg, m_ResImg, elementY,Point(0,1),1);
+	dilate(m_ResImg, m_ResImg, elementY,Point(0,1),1);
+	
+	return m_ResImg;
 }

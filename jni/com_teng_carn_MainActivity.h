@@ -65,7 +65,7 @@ extern "C" {
 JNIEXPORT jstring JNICALL Java_com_teng_carn_MainActivity_getStringNumber
   (JNIEnv *, jobject, jint, jint, jbyteArray, jstring);
 JNIEXPORT void JNICALL Java_com_teng_carn_MainActivity_setJNIEnv
-  (JNIEnv *env, jobject);
+  (JNIEnv *env, jobject,jstring);
 
 #ifdef __cplusplus
 }

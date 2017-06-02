@@ -7,8 +7,14 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
@@ -154,7 +160,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         	   	public void run()
         	   	{
         	   		try {
-						Thread.sleep(5000);
+						Thread.sleep(1000);
 					} catch (InterruptedException e) {
 						// TODO Auto-generated catch block
 						e.printStackTrace();
@@ -169,7 +175,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         	   			}
         	   			try 
         	   			{
-        	   				Thread.sleep(3000);
+        	   				Thread.sleep(2000);
         	   			} 
         	   			catch (InterruptedException e) 
         	   			{
@@ -180,7 +186,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         	   	}
            };
             
-           setJNIEnv();
+           setJNIEnv("/storage/sdcard1/carnumber/65_car/65_car");
 	}
 
 
@@ -223,7 +229,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             //params.setPreviewFormat(ImageFormat.JPEG);
             params.setPreviewFormat(ImageFormat.NV21);  
             //params.setPictureSize(480,640);
-            params.setPreviewSize(320, 240);
+            params.setPreviewSize(640, 480);
             
             /*List<String> focusModes = params.getSupportedFocusModes();  
             if(focusModes.contains("continuous-video")){  
@@ -348,7 +354,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             		int iSum = Integer.parseInt(s[0]);
             		if(iSum > 0 && s.length > 4)
             		{
-            			Rect r = new Rect(Integer.parseInt(s[1])*2,Integer.parseInt(s[2])*2,Integer.parseInt(s[3])*2,Integer.parseInt(s[4])*2);
+            			Rect r = new Rect(Integer.parseInt(s[1]),Integer.parseInt(s[2]),Integer.parseInt(s[3]),Integer.parseInt(s[4]));
             			mSVDraw.drawRect(r);
             		}
             		else
@@ -474,41 +480,64 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 		return true;
 	}
 
-    public void drawImage(byte[] imageBuff,int iTotalLen,int iFlag)
+    public void drawImage(byte[] imageBuff,int iTotalLen,int iWidth,int iHeight)
     {
-            System.out.println("1111111111len:"+iTotalLen + " len2:" + imageBuff.length);
-            Bitmap bm = null;
-            try
+            System.out.println("1111111111len:"+iTotalLen + " width:" + iWidth + " height:" + iHeight  + " len2:" + imageBuff.length);
+            
+            int[] colors = new int[iWidth * iHeight];
+            int k = 0;
+            for(int i = 0; i < colors.length; i++)
             {
-                bm = BitmapFactory.decodeByteArray(imageBuff, 0, iTotalLen);
+            	int B = imageBuff[k] & 0x00ff;
+            	int G = imageBuff[k+1] & 0x00ff;
+            	int R = imageBuff[k+2] & 0x00ff;
+            	colors[i] = Color.argb(255,R,G,B);
+            	//colors[i]  = ( (imageBuff[k] & 0x00ff) | ((imageBuff[k+1] << 8) & 0x00ff)  | ((imageBuff[k+2]<<16) & 0x00ff) | (255<<24) & 0x00ff );
+            	k+=3;
             }
-            catch (java.lang.ArrayIndexOutOfBoundsException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-            }
-            if(bm == null)
+            Bitmap bm = Bitmap.createBitmap(colors, iWidth, iHeight, Config.ARGB_8888);
+            /*
+            Bitmap bm = Bitmap.createBitmap(iWidth, iHeight, Config.ARGB_8888);
+            for(int y=0;y<iHeight;y++)
             {
-            	System.out.println("1111111111l not nullnull");
-            	return;
-            }         
-            switch(iFlag)
-            {
-            case 0:
-            	ImageView v = (ImageView)findViewById(R.id.send_image);
-            	v.setImageBitmap(bm);
-            	
-            	break;
-            case 1:
-            	break;
-            case 2:
-            	break;
-            default:
-            	break;
-            }
+            	for(int x=0;x<iWidth;x++)
+            	{
+            		byte [] b = new byte[4]; 
+            		b[0] = imageBuff[(y*iHeight + x) * 3];
+            		b[1] = imageBuff[(y*iHeight + x) * 3 + 1];
+            		b[2] = imageBuff[(y*iHeight + x) * 3 + 2];
+            		b[3] = 0;
+            		int color = b[3] & 0xFF |  
+                				(b[2] & 0xFF) << 8  |  
+                				(b[1] & 0xFF) << 16 |  
+                				(b[0] & 0xFF) << 24; 
+            		bm.setPixel(x, y, color);
+            	}
+            }*/
+            ImageView v = (ImageView)findViewById(R.id.send_image);
+            v.setImageBitmap(bm);
     }
+    
+    public void drawImage(int[] colors,int iWidth,int iHeight)
+    {
+    	Bitmap bm = Bitmap.createBitmap(colors, iWidth, iHeight, Config.ARGB_8888);
+    	ImageView v = (ImageView)findViewById(R.id.send_image);
+        v.setImageBitmap(bm);
+    }
+    public void showMsg(byte[] pData,int iDataLen)
+    {
+		try {
+			String str = new String(pData,0,iDataLen,"UTF-8");
+			TextView v = (TextView)findViewById(R.id.textView2);
+			v.setText(str);
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    }   
 	
 	private native String getStringNumber(int w,int h,byte[] yuv,String strTemplatePath);
-	private native void setJNIEnv();
+	private native void setJNIEnv(String strTemplatePath);
 	static
 	{
 		System.loadLibrary("MarkingImg");

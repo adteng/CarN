@@ -10,11 +10,16 @@ typedef struct _NumberElement
 	string strWord;
 } NumberElement;
 
-CALL_BACK_SHOW_FUN pShowImage;
+CALL_BACK_SHOW_IMAGE_FUN pShowImage;
+CALL_BACK_SHOW_MSG_FUN pShowMsg;
 
-void setShowImgFun(CALL_BACK_SHOW_FUN f)
+void setShowImgFun(CALL_BACK_SHOW_IMAGE_FUN f)
 {
 	pShowImage = f;
+}
+void setShowMsgFun(CALL_BACK_SHOW_MSG_FUN f)
+{
+	pShowMsg = f;
 }
 
 bool cmp(NumberElement a,NumberElement b)
@@ -25,11 +30,11 @@ bool cmp(NumberElement a,NumberElement b)
 string  getSubtract(Mat&);
 vector<string> m_vt;
 Mat Operater(Mat &gray);
+string separateCarStr(Mat &image);
 
-vector<string> loadfile(const char* dirname)
+int loadfile(const char* dirname)
 {
-		vector<string> vt;
-		vt.clear();
+	m_vt.clear();
     DIR* dp;
     struct dirent* dirp;
     struct stat st;
@@ -40,7 +45,7 @@ vector<string> loadfile(const char* dirname)
     {
         //perror("opendir");
         LOGD("not fond templat");
-        return vt;
+        return -1;
     }
 
     /* fill tab array with tabs */
@@ -66,7 +71,7 @@ vector<string> loadfile(const char* dirname)
         strncat(fullname, "/", sizeof(fullname));
         strncat(fullname, dirp->d_name, sizeof(fullname));
         //printf("%s\n", fullname);
-        vt.push_back(fullname);
+        m_vt.push_back(fullname);
         /* get dirent status */
         if(stat(fullname, &st) == -1)
             break;
@@ -75,7 +80,7 @@ vector<string> loadfile(const char* dirname)
         if(S_ISDIR(st.st_mode) /*&& list_dir_name(fullname, tabs + 1) == -1*/)
             continue;
     }
-    return vt;
+    return m_vt.size();
 }
 
 void getPXSum(Mat &src, int &a)//获取所有像素点和
@@ -122,7 +127,7 @@ string  getSubtract(Mat &src) //两张图片相减
 	//printf("%s\n", strVal);
 	return strVal.substr(0,strVal.length()-4);
 }
-
+/*
 string MarkingImg1(int width,int height,uchar *_yuv,const char *dir)
 {
 	string strValues = "";
@@ -346,7 +351,7 @@ LOGI("save4 result:%d",iret);
 	
 	return strValues;
 }
-string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
+string MarkingImg2(int width,int height,uchar *_yuv,const char *dir)
 {
 	string strValues = "";
     Mat myuv(height+height/2, width, CV_8UC1,_yuv);
@@ -370,63 +375,157 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 	  CV_RETR_EXTERNAL,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
 	  CV_CHAIN_APPROX_SIMPLE, 
 	  Point(0, 0) );
-	
+	 
+	int i=0;
+	string str = "";
 	vector<vector<Point> >::iterator itc= contours.begin();
 	while (itc!=contours.end()) 
 	{	 
 		double tmparea = fabs(contourArea(*itc));//面积
 		double contLenth =  arcLength(*itc,true);//周长
-		//RotatedRect minRect = minAreaRect(*itc);  
-		//Point2f vertices[4];  
-		//minRect.points(vertices); //获得最小外接矩形4个点
+		double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//与圆的近似度
 		
-		//-------最小外接圆------------------- 
+		RotatedRect minRect = minAreaRect(*itc);  
+		Point2f vertices[4];  
+		minRect.points(vertices); //获得最小外接矩形4个点
+		double L1 = sqrt((vertices[0].x-vertices[1].x) * (vertices[0].x-vertices[1].x) + (vertices[0].y-vertices[1].y) * (vertices[0].y-vertices[1].y));
+		double L2 = sqrt((vertices[2].x-vertices[1].x) * (vertices[2].x-vertices[1].x) + (vertices[2].y-vertices[1].y) * (vertices[2].y-vertices[1].y));
+		float angle;
+		if(L1 > L2) 
+		{
+			int T = L2;
+			L2 = L1;
+			L1 = T;
+			angle = atan2((vertices[0].y-vertices[1].y),(vertices[0].x-vertices[1].x)) * 180.0/CV_PI;
+		}
+		else
+			angle = atan2((vertices[2].y-vertices[1].y),(vertices[2].x-vertices[1].x)) * 180.0/CV_PI;
+		
+		//最小外接圆
 		Point2f center;//圆心  
 		float radius;//半径  
 		minEnclosingCircle(*itc, center, radius);
-		//-------最小外接圆------------------- 
+		
 		Rect rt = boundingRect(*itc);//包含轮廓的矩形
 		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
 		if(l > 20)
 		{
 			itc = contours.erase(itc);
 		}
-		/*
-		else if(radius < 30 || radius > 60)
+		else if(Afa < 0.08)
 			itc = contours.erase(itc);
-		else if(rt.width/rt.height < 1)
-		{
-			itc = contours.erase(itc);
-		}*/
 		else
 		{
+			char sTmp[64] = {0};
+			sprintf(sTmp,"%d,%d,%d,%d,",rt.x,rt.y,rt.x + rt.width,rt.y + rt.height);
+			str += sTmp;
+			i++;
 			itc++;
 		}
 	}
-	Mat drawing = Mat::zeros( gray_bi.size(), CV_8UC3 );
-	RNG rng(12345);
+	char *pRetBuffer = new char[str.length() + 4];
+	memset(pRetBuffer,0,str.length() + 3);
+	sprintf(pRetBuffer,"%d,%s",i,str.c_str());
+	str = pRetBuffer;
+	delete [] pRetBuffer;
+	return str;
+}
+*/
+string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
+{
+	string strValues = "";
+    Mat myuv(height+height/2, width, CV_8UC1,_yuv);
+    Mat mbgr(height, width, CV_8UC3, cv::Scalar(0,0,255));
+    cvtColor(myuv, mbgr, CV_YUV420sp2BGR);
+    
+    Mat t,oriMat;
+ 	transpose(mbgr,t);//转90度
+ 	flip(t,oriMat,1);
+
+//(*pShowImage)(oriMat.data,oriMat.step[0]*oriMat.rows,oriMat.cols,oriMat.rows);
+
+ 	Mat w_mat = oriMat.clone();
+ 	Mat imgHSV;
+ 	vector<Mat> hsvSplit;
+	cvtColor(w_mat,imgHSV,COLOR_BGR2HSV);
+	split(imgHSV,hsvSplit);
+	equalizeHist(hsvSplit[2],hsvSplit[2]);
+	merge(hsvSplit,imgHSV);
+	Mat imgThresholded;
+	inRange(imgHSV, Scalar(100, 50, 50), Scalar(170, 255, 255), imgThresholded); //Threshold the image
+	
+	Mat gray_bi = Operater(imgThresholded);
+//(*pShowImage)(gray_bi.data,gray_bi.step[0]*gray_bi.rows,gray_bi.cols,gray_bi.rows);
+	/*
+	if(string(dir) == "true")
+		imwrite("/storage/emulated/0/data/morph.jpg",gray_bi);	
+	*/
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	findContours( gray_bi, contours, hierarchy, 
+	  CV_RETR_EXTERNAL,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
+	  CV_CHAIN_APPROX_SIMPLE, 
+	  Point(0, 0) );
+	 
 	int i=0;
 	string str = "";
-	for(i=0;i<contours.size();i++)
-	{
-		Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-		drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
-		//-------最小外接圆-------------------  
-		Point2f center;//圆心  
-		float radius;//半径  
-		minEnclosingCircle(contours[i], center, radius); 
-		circle(oriMat,center,radius,color);
+	vector<vector<Point> >::iterator itc= contours.begin();
+	while (itc!=contours.end()) 
+	{	 
+		double tmparea = fabs(contourArea(*itc));//面积
+		double contLenth =  arcLength(*itc,true);//周长
+		double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//与圆的近似度
 		
-		Rect rt = boundingRect(contours[i]);//包含轮廓的矩形
-		char sTmp[32] = {0};
-		sprintf(sTmp,"%d,%d,%d,%d,",rt.x,rt.y,rt.x + rt.width,rt.y + rt.height);
-		str += sTmp;
+		RotatedRect minRect = minAreaRect(*itc);  
+		Point2f vertices[4];  
+		minRect.points(vertices); //获得最小外接矩形4个点
+		double L1 = sqrt((vertices[0].x-vertices[1].x) * (vertices[0].x-vertices[1].x) + (vertices[0].y-vertices[1].y) * (vertices[0].y-vertices[1].y));
+		double L2 = sqrt((vertices[2].x-vertices[1].x) * (vertices[2].x-vertices[1].x) + (vertices[2].y-vertices[1].y) * (vertices[2].y-vertices[1].y));
+		float angle;
+		if(L1 > L2) 
+		{
+			int T = L2;
+			L2 = L1;
+			L1 = T;
+			angle = atan2((vertices[0].y-vertices[1].y),(vertices[0].x-vertices[1].x)) * 180.0/CV_PI;
+		}
+		else
+			angle = atan2((vertices[2].y-vertices[1].y),(vertices[2].x-vertices[1].x)) * 180.0/CV_PI;
+		
+		//最小外接圆
+		Point2f center;//圆心  
+		float radius;//半径 
+		minEnclosingCircle(*itc, center, radius);
+		
+		Rect rt = boundingRect(*itc);//包含轮廓的矩形
+		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
+		if(l > 50)
+		{
+			itc = contours.erase(itc);
+		}
+		else if(Afa < 0.08)
+			itc = contours.erase(itc);
+		else if(rt.width < oriMat.cols/8)
+			itc = contours.erase(itc);
+		else
+		{
+			char sTmp[64] = {0};
+			sprintf(sTmp,"%d,%d,%d,%d,",rt.x,rt.y,rt.x + rt.width,rt.y + rt.height);
+			str += sTmp;
+			i++;
+			itc++;
+			Mat image_roi = oriMat(rt).clone();
+			(*pShowImage)(image_roi.data,image_roi.step[0]*image_roi.rows,image_roi.cols,image_roi.rows);
+			string strNum = separateCarStr(image_roi);
+		}
 	}
-	char sRet[128] = {0};
-	sprintf(sRet,"%d,%s",i,str.c_str());
-	return sRet;
+	char *pRetBuffer = new char[str.length() + 4];
+	memset(pRetBuffer,0,str.length() + 3);
+	sprintf(pRetBuffer,"%d,%s",i,str.c_str());
+	str = pRetBuffer;
+	delete [] pRetBuffer;
+	return str;
 }
-
 
 Mat Operater(Mat &gray)
 {
@@ -436,28 +535,76 @@ Mat Operater(Mat &gray)
 	Mat G_kernel = getGaussianKernel(ksize,0.3*((ksize-1)*0.5-1)+0.8);
 	filter2D(gray,g_gray,-1,G_kernel);
 
-	//Sobel算子（x方向和y方向）
+/*	//Sobel算子（x方向和y方向）
 	Mat sobel_x,sobel_y;
 	Sobel(g_gray,sobel_x,CV_16S,1,0,3);
-	Sobel(g_gray,sobel_y,CV_16S,0,1,3);
+	Sobel(g_gray,sobel_y,CV_16S,0,1,3); 
 	Mat abs_x,abs_y;
 	convertScaleAbs(sobel_x,abs_x);
 	convertScaleAbs(sobel_y,abs_y);
 	Mat grad;
 	addWeighted(abs_x,0.5,abs_y,0.5,0,grad);
+	*/
+	Mat detected_edges;
+	blur( g_gray, detected_edges, Size(3,3) );
+	/// 运行Canny算子
+	Canny( detected_edges, detected_edges, 80, 80*2.5, 3 );
+	/// 使用 Canny算子输出边缘作为掩码显示原图像
+	/*
+	dst = Scalar::all(0);
+	src.copyTo( dst, detected_edges);
+	imshow( window_name, dst );
+	*/
+	//return detected_edges;
 	Mat img_bin;
-	threshold(grad,img_bin,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);	
-	
-   //获取自定义核
-    Mat elementX = getStructuringElement(MORPH_RECT, Size(3, 1));
+	threshold(detected_edges,img_bin,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
+    Mat elementX = getStructuringElement(MORPH_RECT, Size(3, 3),Point(-1,-1));
     Mat m_ResImg;
-    dilate(img_bin, m_ResImg, elementX,Point(1,0),1);
-	erode(m_ResImg, m_ResImg, elementX,Point(1,0),1);
-	dilate(m_ResImg, m_ResImg, elementX,Point(1,0),1);
-	
-	Mat elementY = getStructuringElement(MORPH_RECT, Size(1, 3));
-	erode(m_ResImg, m_ResImg, elementY,Point(0,1),1);
-	dilate(m_ResImg, m_ResImg, elementY,Point(0,1),1);
-	
+    dilate(img_bin, m_ResImg,elementX,Point(-1,-1),1);
+	//erode(m_ResImg, m_ResImg,elementX,Point(-1,-1),1);
+	//dilate(m_ResImg, m_ResImg,elementX,Point(-1,-1),1);	
 	return m_ResImg;
 }
+
+string separateCarStr(Mat &image)
+{
+	Mat gray;
+	cvtColor(image,gray,COLOR_BGR2GRAY);
+	blur( gray, gray, Size(3,3) );
+	Canny( gray, gray, 80, 80*2.5, 3 );
+	Mat ori = gray.clone();
+	threshold(gray,gray,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	findContours( gray, contours, hierarchy, 
+	  CV_RETR_CCOMP,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
+	  CV_CHAIN_APPROX_SIMPLE, 
+	  Point(0, 0) );
+	string str = "";
+	vector<vector<Point> >::iterator itc= contours.begin();
+	while (itc!=contours.end()) 
+	{	 
+		double tmparea = fabs(contourArea(*itc));//面积	
+			
+		RotatedRect minRect = minAreaRect(*itc);
+		Point2f vertices[4];  
+		minRect.points(vertices); //获得最小外接矩形4个点
+		Rect rt = boundingRect(*itc);
+		if(rt.height < image.rows * 2/3)
+			itc = contours.erase(itc);
+		else if(rt.width < rt.height)
+			itc = contours.erase(itc);
+		else if(rt.height > 5 * rt.width)
+			itc = contours.erase(itc);
+		else
+		{
+			Mat m = ori(rt).clone();
+			str += getSubtract(m);
+			++itc;
+		}
+	}
+	(*pShowMsg)((uchar *)str.c_str(),str.length());
+	return str;
+}
+
+

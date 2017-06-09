@@ -7,10 +7,14 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
 import android.graphics.Bitmap;
+import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
 import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
@@ -57,7 +61,9 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     private int m_iMaxZoom = 0;
     private int m_iZoom = 0;
     private boolean m_bTakingPicture = false; 
-	
+    private boolean m_bFocus = false;
+    private SVDraw  mSVDraw = null;
+    Thread m_setFocusThread;	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -145,7 +151,42 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
                        }
 
                       });
-            setJNIEnv();
+            
+            
+           mSVDraw = (SVDraw)findViewById(R.id.mDraw);
+           mSVDraw.setVisibility(View.VISIBLE);  
+           m_setFocusThread = new Thread(){
+        	   	
+        	   	public void run()
+        	   	{
+        	   		try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						// TODO Auto-generated catch block
+						e.printStackTrace();
+					}
+        	   		while(mCamera != null)
+        	   		{
+        	   			if(!m_bFocus)
+        	   			{
+        	   				mSVDraw.clearDraw();
+        	   				m_bFocus = true;
+        	   				mCamera.autoFocus(mAutoFocusCallback);
+        	   			}
+        	   			try 
+        	   			{
+        	   				Thread.sleep(2000);
+        	   			} 
+        	   			catch (InterruptedException e) 
+        	   			{
+        	   				// TODO Auto-generated catch block
+        	   				e.printStackTrace();
+        	   			}
+        	   		}
+        	   	}
+           };
+            
+           setJNIEnv("/storage/sdcard1/carnumber/65_car/65_car");
 	}
 
 
@@ -156,6 +197,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 		//Log.i("jefry", "w="+width+"  h="+height);
 		//Log.i("jefry", "1111111111111111111111111111111111111111111111111");	
 		//initCamera();
+		
 	}
 
 	@Override
@@ -186,12 +228,19 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 
             //params.setPreviewFormat(ImageFormat.JPEG);
             params.setPreviewFormat(ImageFormat.NV21);  
-            //params.setPreviewSize(320, 240);
+            //params.setPictureSize(480,640);
+            params.setPreviewSize(640, 480);
+            
+            /*List<String> focusModes = params.getSupportedFocusModes();  
+            if(focusModes.contains("continuous-video")){  
+            	params.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO);  
+            }*/
             mCamera.setParameters(params);
             priviewCallBack pre = new priviewCallBack();//建立预览回调对象
             mCamera.setPreviewCallback(pre); //设置预览回调对象
             mCamera.startPreview();//开始预览，这步操作很重要
-   mCamera.autoFocus(mAutoFocusCallback);
+            //mCamera.autoFocus(mAutoFocusCallback);
+            m_setFocusThread.start();
         } catch (IOException exception) {
             mCamera.release();
             mCamera = null;
@@ -219,9 +268,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         mCamera.release();
         mCamera = null;
 	}
-	
-	
-	  /* 拍照的method */
+	/* 拍照的method */
     private void takePicture() {
         if (mCamera != null) {
             mCamera.takePicture(shutterCallback, rawCallback, jpegCallback);
@@ -231,7 +278,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     private ShutterCallback shutterCallback = new ShutterCallback() {
         public void onShutter() {
             /* 按下快门瞬间会调用这里的程序 */
-        	Log.w("============", "shutterCallback");
+        	Log.w("jefry", "shutterCallback");
         }
     };
 
@@ -288,35 +335,53 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     public final class MyAutoFocusCallback implements
             android.hardware.Camera.AutoFocusCallback {
         public void onAutoFocus(boolean focused, Camera camera) {
-        	Log.w("11111111111111","111111111111111");
+        	Log.w("jefry","111111111111111");
             /* 对到焦点拍照 */
-            if (focused && m_bTakingPicture) {
+            if (focused && m_bFocus) {
             	Log.w("2222222222222","22222222222222");
                 //takePicture();
             	Size size = mCamera.getParameters().getPreviewSize(); //获取预览大小
             	synchronized(m_strLock)
             	{
             		Log.i("jefry", "w="+size.width+"  h="+size.height);
-            		String str = getStringNumber(size.width,size.height,mBuffer,"/storage/sdcard1/carnumber/65_car/65_car");
+            		String strOP;
+            		if(m_bTakingPicture)
+            			strOP = "true";
+            		else
+            			strOP = "false";
+            		String str = getStringNumber(size.width,size.height,mBuffer,strOP/*"/storage/sdcard1/carnumber/65_car/65_car"*/);
+            		String[] s = str.split(",");
+            		int iSum = Integer.parseInt(s[0]);
+            		if(iSum > 0 && s.length > 4)
+            		{
+            			Rect r = new Rect(Integer.parseInt(s[1]),Integer.parseInt(s[2]),Integer.parseInt(s[3]),Integer.parseInt(s[4]));
+            			mSVDraw.drawRect(r);
+            		}
+            		else
+            			mSVDraw.clearDraw();
             		Log.i("result", str);	
             		TextView v = (TextView)findViewById(R.id.textView1);
             		v.setText(str);
-            		m_bTakingPicture = false;
-            		
-            		FileInputStream fis =null;
-					try {
-						fis = new FileInputStream("/storage/emulated/0/data/morph.jpg");
-					} catch (FileNotFoundException e) {
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-            		Bitmap bm=BitmapFactory.decodeStream(fis);
-            		ImageView img = (ImageView)findViewById(R.id.send_image);
-            		img.setImageBitmap(bm);		
-            		
+            		if(m_bTakingPicture)
+            		{
+            			m_bTakingPicture = false;
+            			FileInputStream fis =null;
+            			try {
+            				fis = new FileInputStream("/storage/emulated/0/data/morph.jpg");
+            			} 
+            			catch (FileNotFoundException e) 
+            			{
+            				// TODO Auto-generated catch block
+            				e.printStackTrace();
+            			}
+            			Bitmap bm=BitmapFactory.decodeStream(fis);
+            			ImageView img = (ImageView)findViewById(R.id.send_image);
+            			img.setImageBitmap(bm);		
+            		}
             	}
             	
             }
+            m_bFocus = false;
         }
     };
 
@@ -415,44 +480,69 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 		return true;
 	}
 
-    public void drawImage(byte[] imageBuff,int iTotalLen,int iFlag)
+    public void drawImage(byte[] imageBuff,int iTotalLen,int iWidth,int iHeight)
     {
-            System.out.println("1111111111len:"+iTotalLen + " len2:" + imageBuff.length);
-            Bitmap bm = null;
-            try
+            System.out.println("1111111111len:"+iTotalLen + " width:" + iWidth + " height:" + iHeight  + " len2:" + imageBuff.length);
+            
+            int[] colors = new int[iWidth * iHeight];
+            int k = 0;
+            for(int i = 0; i < colors.length; i++)
             {
-                bm = BitmapFactory.decodeByteArray(imageBuff, 0, iTotalLen);
+            	int B = imageBuff[k] & 0x00ff;
+            	int G = imageBuff[k+1] & 0x00ff;
+            	int R = imageBuff[k+2] & 0x00ff;
+            	colors[i] = Color.argb(255,R,G,B);
+            	//colors[i]  = ( (imageBuff[k] & 0x00ff) | ((imageBuff[k+1] << 8) & 0x00ff)  | ((imageBuff[k+2]<<16) & 0x00ff) | (255<<24) & 0x00ff );
+            	k+=3;
             }
-            catch (java.lang.ArrayIndexOutOfBoundsException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-            }
-            if(bm == null)
+            Bitmap bm = Bitmap.createBitmap(colors, iWidth, iHeight, Config.ARGB_8888);
+            /*
+            Bitmap bm = Bitmap.createBitmap(iWidth, iHeight, Config.ARGB_8888);
+            for(int y=0;y<iHeight;y++)
             {
-            	System.out.println("1111111111l not nullnull");
-            	return;
-            }         
-            switch(iFlag)
-            {
-            case 0:
-            	ImageView v = (ImageView)findViewById(R.id.send_image);
-            	v.setImageBitmap(bm);
-            	
-            	break;
-            case 1:
-            	break;
-            case 2:
-            	break;
-            default:
-            	break;
-            }
+            	for(int x=0;x<iWidth;x++)
+            	{
+            		byte [] b = new byte[4]; 
+            		b[0] = imageBuff[(y*iHeight + x) * 3];
+            		b[1] = imageBuff[(y*iHeight + x) * 3 + 1];
+            		b[2] = imageBuff[(y*iHeight + x) * 3 + 2];
+            		b[3] = 0;
+            		int color = b[3] & 0xFF |  
+                				(b[2] & 0xFF) << 8  |  
+                				(b[1] & 0xFF) << 16 |  
+                				(b[0] & 0xFF) << 24; 
+            		bm.setPixel(x, y, color);
+            	}
+            }*/
+            ImageView v = (ImageView)findViewById(R.id.send_image);
+            v.setImageBitmap(bm);
     }
+    
+    public void drawImage(int[] colors,int iWidth,int iHeight)
+    {
+    	Bitmap bm = Bitmap.createBitmap(colors, iWidth, iHeight, Config.ARGB_8888);
+    	ImageView v = (ImageView)findViewById(R.id.send_image);
+        v.setImageBitmap(bm);
+    }
+    public void showMsg(byte[] pData,int iDataLen)
+    {
+		try {
+			String str = new String(pData,0,iDataLen,"UTF-8");
+			TextView v = (TextView)findViewById(R.id.textView2);
+			v.setText(str);
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    }   
 	
 	private native String getStringNumber(int w,int h,byte[] yuv,String strTemplatePath);
-	private native void setJNIEnv();
+	private native void setJNIEnv(String strTemplatePath);
 	static
 	{
 		System.loadLibrary("MarkingImg");
 	}
+	
+	
 
 }

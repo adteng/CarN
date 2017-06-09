@@ -517,6 +517,7 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 			Mat image_roi = oriMat(rt).clone();
 			(*pShowImage)(image_roi.data,image_roi.step[0]*image_roi.rows,image_roi.cols,image_roi.rows);
 			string strNum = separateCarStr(image_roi);
+imwrite("/storage/emulated/0/data/car_sno.jpg",image_roi);	
 		}
 	}
 	char *pRetBuffer = new char[str.length() + 4];
@@ -568,6 +569,75 @@ Mat Operater(Mat &gray)
 
 string separateCarStr(Mat &image)
 {
+	Mat detected_edges,gray;
+	//Mat orin = image.clone();
+	cvtColor(image,gray,COLOR_BGR2GRAY);
+	blur(gray, gray, Size(3,3) );
+	Canny(gray, detected_edges, 80, 80*2.5, 3 );
+	Mat ori = image.clone();
+	//image.copyTo(ori, detected_edges);
+
+	threshold(detected_edges,detected_edges,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
+	
+	vector<vector<Point> > contours;
+	vector<Vec4i> hierarchy;
+	findContours( detected_edges, contours, hierarchy, 
+	  CV_RETR_CCOMP,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
+	  CV_CHAIN_APPROX_SIMPLE, 
+	  Point(0, 0) );
+	vector<NumberElement> vlist;vlist.clear();
+	vector<vector<Point> >::iterator itc= contours.begin();
+	while (itc!=contours.end()) 
+	{	 
+		double tmparea = fabs(contourArea(*itc));//面积	
+			
+		RotatedRect minRect = minAreaRect(*itc);
+		Point2f vertices[4];  
+		minRect.points(vertices); //获得最小外接矩形4个点
+		Rect rt = boundingRect(*itc);
+		if(rt.height < image.rows /4.0)
+			itc = contours.erase(itc);
+		else if(rt.width > rt.height)
+			itc = contours.erase(itc);
+		else if(rt.height > 5 * rt.width)
+			itc = contours.erase(itc);
+		else
+		{
+			NumberElement ne;
+			ne.x = rt.x;
+			ne.y = rt.y;
+			ne.w = rt.width;
+			ne.h = rt.height;
+	
+			Mat m = ori(rt).clone();
+			cvtColor(m,m,COLOR_BGR2GRAY);
+			blur(m, m, Size(3,3));
+			//threshold(m,m,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
+char c[4] = {0};
+sprintf(c,"%d", itc-contours.begin() + 1);
+			ne.strWord = getSubtract(m);
+			vlist.push_back(ne);
+//cout << "seq:" << itc-contours.begin() + 1 << " tmparea:" << tmparea << " rt_width:" << rt.width << " rt_height:" << rt.height  << endl;
+			++itc;
+		}
+	}
+	string str = "";
+	int iBeforeX = 0;
+	sort(vlist.begin(),vlist.end(),cmp);
+	for(vector<NumberElement>::iterator it=vlist.begin();it!=vlist.end();it++)
+	{
+		if(it->x == iBeforeX)
+			continue;
+		iBeforeX = it->x;
+		str += it->strWord;
+	}
+
+	(*pShowMsg)((uchar *)str.c_str(),str.length());
+	return str;
+}
+/*
+string separateCarStr(Mat &image)
+{
 	Mat gray;
 	cvtColor(image,gray,COLOR_BGR2GRAY);
 	blur( gray, gray, Size(3,3) );
@@ -590,9 +660,9 @@ string separateCarStr(Mat &image)
 		Point2f vertices[4];  
 		minRect.points(vertices); //获得最小外接矩形4个点
 		Rect rt = boundingRect(*itc);
-		if(rt.height < image.rows * 2/3)
+		if(rt.height < image.rows /4.0)
 			itc = contours.erase(itc);
-		else if(rt.width < rt.height)
+		else if(rt.width > rt.height)
 			itc = contours.erase(itc);
 		else if(rt.height > 5 * rt.width)
 			itc = contours.erase(itc);
@@ -607,4 +677,4 @@ string separateCarStr(Mat &image)
 	return str;
 }
 
-
+*/

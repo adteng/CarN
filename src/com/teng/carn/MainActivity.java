@@ -8,9 +8,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-import java.nio.IntBuffer;
-
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
@@ -229,7 +226,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             //params.setPreviewFormat(ImageFormat.JPEG);
             params.setPreviewFormat(ImageFormat.NV21);  
             //params.setPictureSize(480,640);
-            params.setPreviewSize(640, 480);
+            params.setPreviewSize(960, 720);
             
             /*List<String> focusModes = params.getSupportedFocusModes();  
             if(focusModes.contains("continuous-video")){  
@@ -354,7 +351,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             		int iSum = Integer.parseInt(s[0]);
             		if(iSum > 0 && s.length > 4)
             		{
-            			Rect r = new Rect(Integer.parseInt(s[1]),Integer.parseInt(s[2]),Integer.parseInt(s[3]),Integer.parseInt(s[4]));
+            			Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
             			mSVDraw.drawRect(r);
             		}
             		else

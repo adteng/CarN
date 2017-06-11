@@ -85,7 +85,7 @@ int loadfile(const char* dirname)
 
 void getPXSum(Mat &src, int &a)//获取所有像素点和
 { 
-	threshold(src, src, 100, 255, CV_THRESH_BINARY);
+	threshold(src, src, 0, 255, CV_THRESH_BINARY |CV_THRESH_OTSU);
 	  a = 0;
 	for (int i = 0; i < src.rows;i++)
 	{
@@ -98,7 +98,6 @@ void getPXSum(Mat &src, int &a)//获取所有像素点和
 
 string  getSubtract(Mat &src) //两张图片相减
 {
-	Mat img_result;
 	int min = 1000000;
 	string strVal;
 	for(vector<string>::iterator it = m_vt.begin();it!=m_vt.end();it++)
@@ -106,11 +105,12 @@ string  getSubtract(Mat &src) //两张图片相减
 		string strFileName = (*it).c_str();
 	
 		Mat Template = imread(strFileName.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
-		threshold(Template, Template, 100, 255, CV_THRESH_BINARY);
-		threshold(src, src, 100, 255, CV_THRESH_BINARY);
-		resize(src, src, Size(32, 48), 0, 0, CV_INTER_LINEAR);
-		resize(Template, Template, Size(32, 48), 0, 0, CV_INTER_LINEAR);//调整尺寸
+		threshold(Template, Template, 0, 255, CV_THRESH_BINARY |CV_THRESH_OTSU);
+		threshold(src, src, 0, 255, CV_THRESH_BINARY |CV_THRESH_OTSU);
+		resize(src, src, Size(20, 40), 0, 0, CV_INTER_LINEAR);
+		//resize(Template, Template, Size(32, 48), 0, 0, CV_INTER_LINEAR);//调整尺寸
 		//imshow(name, Template);
+		Mat img_result;
 		absdiff(Template, src, img_result);//两个图片对应像素点值相减
 		int diff = 0;
 		getPXSum(img_result, diff);
@@ -570,7 +570,6 @@ Mat Operater(Mat &gray)
 string separateCarStr(Mat &image)
 {
 	Mat detected_edges,gray;
-	//Mat orin = image.clone();
 	cvtColor(image,gray,COLOR_BGR2GRAY);
 	blur(gray, gray, Size(3,3) );
 	Canny(gray, detected_edges, 80, 80*2.5, 3 );
@@ -582,7 +581,7 @@ string separateCarStr(Mat &image)
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	findContours( detected_edges, contours, hierarchy, 
-	  CV_RETR_CCOMP,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
+	  CV_RETR_EXTERNAL,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
 	  CV_CHAIN_APPROX_SIMPLE, 
 	  Point(0, 0) );
 	vector<NumberElement> vlist;vlist.clear();
@@ -611,10 +610,8 @@ string separateCarStr(Mat &image)
 	
 			Mat m = ori(rt).clone();
 			cvtColor(m,m,COLOR_BGR2GRAY);
-			blur(m, m, Size(3,3));
+			//blur(m, m, Size(3,3));
 			//threshold(m,m,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
-char c[4] = {0};
-sprintf(c,"%d", itc-contours.begin() + 1);
 			ne.strWord = getSubtract(m);
 			vlist.push_back(ne);
 //cout << "seq:" << itc-contours.begin() + 1 << " tmparea:" << tmparea << " rt_width:" << rt.width << " rt_height:" << rt.height  << endl;
@@ -624,7 +621,9 @@ sprintf(c,"%d", itc-contours.begin() + 1);
 	string str = "";
 	int iBeforeX = 0;
 	sort(vlist.begin(),vlist.end(),cmp);
-	for(vector<NumberElement>::iterator it=vlist.begin();it!=vlist.end();it++)
+	vector<NumberElement>::iterator it=vlist.begin();
+	if(it == vlist.end()||it->strWord.length() < 2) return "0";
+	for(;it!=vlist.end();it++)
 	{
 		if(it->x == iBeforeX)
 			continue;

@@ -570,14 +570,14 @@ Mat Operater(Mat &gray)
 string separateCarStr(Mat &image)
 {
 	Mat detected_edges,gray;
-	cvtColor(image,gray,COLOR_BGR2GRAY);
-	blur(gray, gray, Size(3,3) );
-	Canny(gray, detected_edges, 80, 80*2.5, 3 );
 	Mat ori = image.clone();
-	//image.copyTo(ori, detected_edges);
-
+	cvtColor(image,gray,COLOR_BGR2GRAY);
+	Mat elementX = getStructuringElement(MORPH_RECT, Size(3, 3),Point(-1,-1));
+	erode(gray, gray,elementX,Point(-1,-1),1);
+	dilate(gray, gray,elementX,Point(-1,-1),1);
+	//blur(gray, gray, Size(3,3) );
+	Canny(gray, detected_edges, 80, 80*2.5, 3 );
 	threshold(detected_edges,detected_edges,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
-	
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	findContours( detected_edges, contours, hierarchy, 
@@ -596,9 +596,11 @@ string separateCarStr(Mat &image)
 		Rect rt = boundingRect(*itc);
 		if(rt.height < image.rows /4.0)
 			itc = contours.erase(itc);
-		else if(rt.width > rt.height)
+		else if(rt.width >= rt.height)
 			itc = contours.erase(itc);
-		else if(rt.height > 5 * rt.width)
+		else if(rt.height > 10 * rt.width)
+			itc = contours.erase(itc);
+		else if(rt.height < 1.5 * rt.width)
 			itc = contours.erase(itc);
 		else
 		{
@@ -607,28 +609,29 @@ string separateCarStr(Mat &image)
 			ne.y = rt.y;
 			ne.w = rt.width;
 			ne.h = rt.height;
-	
 			Mat m = ori(rt).clone();
 			cvtColor(m,m,COLOR_BGR2GRAY);
-			//blur(m, m, Size(3,3));
-			//threshold(m,m,0,255,CV_THRESH_BINARY |CV_THRESH_OTSU);
+			blur(m, m, Size(3,3));
 			ne.strWord = getSubtract(m);
 			vlist.push_back(ne);
-//cout << "seq:" << itc-contours.begin() + 1 << " tmparea:" << tmparea << " rt_width:" << rt.width << " rt_height:" << rt.height  << endl;
+			//cout << "seq:" << itc-contours.begin() + 1 << " X:" << rt.x << " rt_width:" << rt.width << " rt_height:" << rt.height  << endl;
 			++itc;
 		}
 	}
+	if(vlist.empty()) return "0";
+	sort(vlist.begin(),vlist.end(),cmp);
 	string str = "";
 	int iBeforeX = 0;
-	sort(vlist.begin(),vlist.end(),cmp);
 	vector<NumberElement>::iterator it=vlist.begin();
-	if(it == vlist.end()||it->strWord.length() < 2) return "0";
+	//if(it->strWord.length() < 2) return "0";
+	NumberElement firstE = *it;
 	for(;it!=vlist.end();it++)
 	{
-		if(it->x == iBeforeX)
-			continue;
-		iBeforeX = it->x;
+		if(it->x == iBeforeX) continue;
+		//if(abs(firstE.h - it->h) > 5) continue;
 		str += it->strWord;
+		iBeforeX = it->x;
+		//cout << "seq:" << it->title << " X:" << it->x << " rt_width:" << it->w << " rt_height:" << it->h << " " << it->strWord  << endl;
 	}
 
 	(*pShowMsg)((uchar *)str.c_str(),str.length());

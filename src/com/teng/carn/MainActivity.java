@@ -21,6 +21,8 @@ import android.hardware.Camera.ShutterCallback;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Message;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -61,6 +63,33 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     private boolean m_bFocus = false;
     private SVDraw  mSVDraw = null;
     Thread m_setFocusThread;	
+    
+    Handler m_handler = new Handler(){
+        public void handleMessage(Message msg) {
+            switch (msg.what) {      
+            case 1:
+            	Size size = mCamera.getParameters().getPreviewSize(); //获取预览大小
+	   			String str = getStringNumber(size.width,size.height,mBuffer,"0");
+        		String[] s = str.split(",");
+        		int iSum = Integer.parseInt(s[0]);
+        		if(iSum > 0 && s.length > 4)
+        		{
+        			Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
+        			mSVDraw.drawRect(r);
+        		}
+        		else
+        			mSVDraw.clearDraw();
+        		Log.i("result", str);
+        		TextView v = (TextView)findViewById(R.id.textView1);
+        		v.setText(str);
+                break;
+            default:
+            	break;
+            }
+            super.handleMessage(msg);
+        }  
+          
+    };
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -164,12 +193,13 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 					}
         	   		while(mCamera != null)
         	   		{
-        	   			if(!m_bFocus)
-        	   			{
-        	   				mSVDraw.clearDraw();
-        	   				m_bFocus = true;
-        	   				mCamera.autoFocus(mAutoFocusCallback);
-        	   			}
+                		Message message = new Message();      
+                        message.what = 1;
+                        m_handler.sendMessage(message);
+                		/*
+                		TextView v = (TextView)findViewById(R.id.textView1);
+                		v.setText(str);
+                		*/
         	   			try 
         	   			{
         	   				Thread.sleep(2000);

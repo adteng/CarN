@@ -27,8 +27,14 @@ bool cmp(NumberElement a,NumberElement b)
 	return a.x < b.x;
 }
 
+typedef struct _TempNumber
+{
+	string strNumber;
+	Mat m;
+}TempNumber;
+
+vector<TempNumber> m_vt;
 string  getSubtract(Mat&);
-vector<string> m_vt;
 Mat Operater(Mat &gray);
 string separateCarStr(Mat &image);
 
@@ -64,21 +70,22 @@ int loadfile(const char* dirname)
         if(dirp->d_name[0] == '.')
             continue;
 
-        /* display file name with proper tab */
-        //printf("%s%s\n", tab, dirp->d_name);
-
+		string strName = dirp->d_name;
         strncpy(fullname, dirname, sizeof(fullname));
         strncat(fullname, "/", sizeof(fullname));
         strncat(fullname, dirp->d_name, sizeof(fullname));
-        //printf("%s\n", fullname);
-        m_vt.push_back(fullname);
         /* get dirent status */
         if(stat(fullname, &st) == -1)
             break;
-
         /* if dirent is a directory, call itself */
         if(S_ISDIR(st.st_mode) /*&& list_dir_name(fullname, tabs + 1) == -1*/)
             continue;
+        
+        TempNumber Tn;
+		Tn.strNumber = strName.substr(0,strName.length()-4);
+		Tn.m = imread(fullname, CV_LOAD_IMAGE_GRAYSCALE);
+		threshold(Tn.m, Tn.m, 0, 255, CV_THRESH_BINARY |CV_THRESH_OTSU);
+        m_vt.push_back(Tn);
     }
     return m_vt.size();
 }
@@ -99,33 +106,23 @@ void getPXSum(Mat &src, int &a)//获取所有像素点和
 string  getSubtract(Mat &src) //两张图片相减
 {
 	int min = 1000000;
-	string strVal;
-	for(vector<string>::iterator it = m_vt.begin();it!=m_vt.end();it++)
+	string strNumber = "";
+	for(vector<TempNumber>::iterator it = m_vt.begin();it!=m_vt.end();it++)
 	{
-		string strFileName = (*it).c_str();
-	
-		Mat Template = imread(strFileName.c_str(), CV_LOAD_IMAGE_GRAYSCALE);
-		threshold(Template, Template, 0, 255, CV_THRESH_BINARY |CV_THRESH_OTSU);
+		Mat Template = it->m;
 		threshold(src, src, 0, 255, CV_THRESH_BINARY |CV_THRESH_OTSU);
 		resize(src, src, Size(20, 40), 0, 0, CV_INTER_LINEAR);
-		//resize(Template, Template, Size(32, 48), 0, 0, CV_INTER_LINEAR);//调整尺寸
-		//imshow(name, Template);
 		Mat img_result;
-		absdiff(Template, src, img_result);//两个图片对应像素点值相减
+		absdiff(Template, src, img_result);
 		int diff = 0;
 		getPXSum(img_result, diff);
 		if (diff < min)
 		{
 			min = diff;
-			//serieNum = i;
-			int iPos = strFileName.rfind("/");
-			strFileName.substr(iPos + 1);
-			strVal = strFileName.substr(iPos + 1);
+			strNumber = it->strNumber;
 		}
 	}
-	//printf("最小距离是%d ", min);
-	//printf("%s\n", strVal);
-	return strVal.substr(0,strVal.length()-4);
+	return strNumber;
 }
 /*
 string MarkingImg1(int width,int height,uchar *_yuv,const char *dir)

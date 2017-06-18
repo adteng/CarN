@@ -63,6 +63,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     private boolean m_bFocus = false;
     private SVDraw  mSVDraw = null;
     Thread m_setFocusThread;	
+    int m_iSleep = 1000;
     
     Handler m_handler = new Handler(){
         public void handleMessage(Message msg) {
@@ -181,8 +182,8 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             
            mSVDraw = (SVDraw)findViewById(R.id.mDraw);
            mSVDraw.setVisibility(View.VISIBLE);  
-           m_setFocusThread = new Thread(){
-        	   	
+           m_setFocusThread = new Thread()
+           {
         	   	public void run()
         	   	{
         	   		try {
@@ -202,7 +203,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
                 		*/
         	   			try 
         	   			{
-        	   				Thread.sleep(2000);
+        	   				Thread.sleep(m_iSleep);
         	   			} 
         	   			catch (InterruptedException e) 
         	   			{
@@ -557,6 +558,10 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 			String str = new String(pData,0,iDataLen,"UTF-8");
 			TextView v = (TextView)findViewById(R.id.textView2);
 			v.setText(str);
+			if(str.length() == 7)
+				m_iSleep = 2000;
+			else
+				m_iSleep = 800;
 		} catch (UnsupportedEncodingException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

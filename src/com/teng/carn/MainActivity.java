@@ -559,7 +559,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 			TextView v = (TextView)findViewById(R.id.textView2);
 			v.setText(str);
 			if(str.length() == 7)
-				m_iSleep = 2000;
+				m_iSleep = 5000;
 			else
 				m_iSleep = 800;
 		} catch (UnsupportedEncodingException e) {

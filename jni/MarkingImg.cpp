@@ -496,7 +496,7 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		
 		Rect rt = boundingRect(*itc);//°üº¬ÂÖÀªµÄ¾ØÐÎ
 		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
-		if(l > 100)
+		if(l > 50)
 		{
 			itc = contours.erase(itc);
 		}
@@ -514,6 +514,7 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 			Mat image_roi = oriMat(rt).clone();
 			(*pShowImage)(image_roi.data,image_roi.step[0]*image_roi.rows,image_roi.cols,image_roi.rows);
 			string strNum = separateCarStr(image_roi);
+			break;
 //imwrite("/storage/emulated/0/data/car_sno.jpg",image_roi);
 		}
 	}

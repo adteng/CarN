@@ -496,7 +496,7 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		
 		Rect rt = boundingRect(*itc);//°üº¬ÂÖÀªµÄ¾ØÐÎ
 		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
-		if(l > 100)
+		if(l > 50)
 		{
 			itc = contours.erase(itc);
 		}

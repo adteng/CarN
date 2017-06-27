@@ -31,6 +31,7 @@ JNIEXPORT jstring JNICALL Java_com_teng_carn_MainActivity_getStringNumber
    	env->ReleaseStringUTFChars(strDir, dir); 
    	//env->DeleteGlobalRef(g_obj);
    	jstring str = env->NewStringUTF(strWord.c_str());
+   	LOGI("111111111111");
    	return str;
 }
 

@@ -496,7 +496,7 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		
 		Rect rt = boundingRect(*itc);//包含轮廓的矩形
 		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
-		if(l > 50)
+		if(l > 100)
 		{
 			itc = contours.erase(itc);
 		}
@@ -514,6 +514,8 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 			Mat image_roi = oriMat(rt).clone();
 			(*pShowImage)(image_roi.data,image_roi.step[0]*image_roi.rows,image_roi.cols,image_roi.rows);
 			string strNum = separateCarStr(image_roi);
+			if(!strNum.empty())
+				str += strNum;
 			break;
 //imwrite("/storage/emulated/0/data/car_sno.jpg",image_roi);
 		}
@@ -522,7 +524,7 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 	memset(pRetBuffer,0,str.length() + 3);
 	sprintf(pRetBuffer,"%d,%s",i,str.c_str());
 	str = pRetBuffer;
-	delete [] pRetBuffer;
+	delete [] pRetBuffer; 
 	return str;
 }
 
@@ -579,7 +581,7 @@ string separateCarStr(Mat &image)
 	vector<vector<Point> > contours;
 	vector<Vec4i> hierarchy;
 	findContours( detected_edges, contours, hierarchy, 
-	  CV_RETR_EXTERNAL,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
+	  CV_RETR_CCOMP,//CV_RETR_TREE,CV_RETR_LIST,CV_RETR_CCOMP,CV_RETR_EXTERNAL
 	  CV_CHAIN_APPROX_SIMPLE, 
 	  Point(0, 0) );
 	vector<NumberElement> vlist;vlist.clear();
@@ -592,7 +594,7 @@ string separateCarStr(Mat &image)
 		Point2f vertices[4];  
 		minRect.points(vertices); //获得最小外接矩形4个点
 		Rect rt = boundingRect(*itc);
-		if(rt.height < image.rows /4.0)
+		if(rt.height < image.size().height * 25.0/43.0)
 			itc = contours.erase(itc);
 		else if(rt.width >= rt.height)
 			itc = contours.erase(itc);
@@ -619,20 +621,21 @@ string separateCarStr(Mat &image)
 	if(vlist.empty()) return "0";
 	sort(vlist.begin(),vlist.end(),cmp);
 	string str = "";
-	int iBeforeX = 0;
+	float fBeforeX = 0;
 	vector<NumberElement>::iterator it=vlist.begin();
 	//if(it->strWord.length() < 2) return "0";
 	NumberElement firstE = *it;
 	for(;it!=vlist.end();it++)
 	{
-		if(it->x == iBeforeX) continue;
-		//if(abs(firstE.h - it->h) > 5) continue;
+		if( fabs((it->x + it->w)/2.0 - fBeforeX) > 3 ) continue;
+		if(it->x < 3) continue;
+		if(image.size().width - (it->x + it->w) < 3 ) continue;
 		str += it->strWord;
-		iBeforeX = it->x;
+		fBeforeX = (it->x + it->w)/2.0;
 		//cout << "seq:" << it->title << " X:" << it->x << " rt_width:" << it->w << " rt_height:" << it->h << " " << it->strWord  << endl;
 	}
 
-	(*pShowMsg)((uchar *)str.c_str(),str.length());
+	//(*pShowMsg)((uchar *)str.c_str(),str.length());
 	return str;
 }
 /*

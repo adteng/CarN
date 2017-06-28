@@ -514,8 +514,8 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 			Mat image_roi = oriMat(rt).clone();
 			(*pShowImage)(image_roi.data,image_roi.step[0]*image_roi.rows,image_roi.cols,image_roi.rows);
 			string strNum = separateCarStr(image_roi);
-			if(!strNum.empty())
-				str += strNum;
+			if(strNum.empty() || strNum=="" ) strNum = "0";
+			str += strNum;
 			break;
 //imwrite("/storage/emulated/0/data/car_sno.jpg",image_roi);
 		}

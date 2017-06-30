@@ -588,8 +588,7 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-    }   
-	
+    }
 	private native String getStringNumber(int w,int h,byte[] yuv,String strTemplatePath);
 	private native void setJNIEnv(String strTemplatePath);
 	static

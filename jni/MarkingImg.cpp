@@ -514,8 +514,8 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 			Mat image_roi = oriMat(rt).clone();
 			(*pShowImage)(image_roi.data,image_roi.step[0]*image_roi.rows,image_roi.cols,image_roi.rows);
 			string strNum = separateCarStr(image_roi);
-			if(!strNum.empty())
-				str += strNum;
+			if(strNum.empty() || strNum=="" ) strNum = "0";
+			str += strNum;
 			break;
 //imwrite("/storage/emulated/0/data/car_sno.jpg",image_roi);
 		}
@@ -627,11 +627,11 @@ string separateCarStr(Mat &image)
 	NumberElement firstE = *it;
 	for(;it!=vlist.end();it++)
 	{
-		if( fabs((it->x + it->w)/2.0 - fBeforeX) > 3 ) continue;
+		if( fabs((it->x + it->x + it->w)/2.0 - fBeforeX) > 3 ) continue;
 		if(it->x < 3) continue;
 		if(image.size().width - (it->x + it->w) < 3 ) continue;
 		str += it->strWord;
-		fBeforeX = (it->x + it->w)/2.0;
+		fBeforeX = (it->x + it->x + it->w)/2.0;
 		//cout << "seq:" << it->title << " X:" << it->x << " rt_width:" << it->w << " rt_height:" << it->h << " " << it->strWord  << endl;
 	}
 

@@ -594,7 +594,7 @@ string separateCarStr(Mat &image)
 		Point2f vertices[4];  
 		minRect.points(vertices); //获得最小外接矩形4个点
 		Rect rt = boundingRect(*itc);
-		if(rt.height < image.size().height * 25.0/43.0)
+		if(rt.height < image.size().height * 22.0/43.0)
 			itc = contours.erase(itc);
 		else if(rt.width >= rt.height)
 			itc = contours.erase(itc);
@@ -627,7 +627,7 @@ string separateCarStr(Mat &image)
 	NumberElement firstE = *it;
 	for(;it!=vlist.end();it++)
 	{
-		if( fabs((it->x + it->x + it->w)/2.0 - fBeforeX) > 3 ) continue;
+		if( fabs((it->x + it->x + it->w)/2.0 - fBeforeX) < 3 ) continue;
 		if(it->x < 3) continue;
 		if(image.size().width - (it->x + it->w) < 3 ) continue;
 		str += it->strWord;

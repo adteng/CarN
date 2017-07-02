@@ -87,10 +87,11 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         			TextView v2 = (TextView)findViewById(R.id.textView2);
         			v2.setText(s[5]);
         			String strNumStr = s[5];
-        			if(strNumStr != null && strNumStr!=""  && strNumStr.length() == 7 && strNumStr.getBytes().length == 8 && strNumStr.substring(0,1).getBytes().length == 2)
-        				m_iSleep = 5000;
+        			Log.i("11111111111111", strNumStr + " length:" + strNumStr.length() + " bytelen:" + strNumStr.getBytes().length + " firstlen:" + strNumStr.substring(0,1).getBytes().length);
+        			if(strNumStr != null && strNumStr!=""  && strNumStr.length() == 7 && strNumStr.getBytes().length == 9 && strNumStr.substring(0,1).getBytes().length == 3)
+        				m_iSleep = 15000;
         			else
-        				m_iSleep = 1000;
+        				m_iSleep = 50;
         		}
         		else
         			mSVDraw.clearDraw();

@@ -577,20 +577,8 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     }
     public void showMsg(byte[] pData,int iDataLen)
     {
-		try {
-			String str = new String(pData,0,iDataLen,"UTF-8");
-			TextView v = (TextView)findViewById(R.id.textView2);
-			v.setText(str);
-			if(str.length() == 7 && str.getBytes().length == 8 && str.substring(0,1).getBytes().length == 2)
-				m_iSleep = 5000;
-			else
-				m_iSleep = 600;
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-    }   
-	
+
+    }
 	private native String getStringNumber(int w,int h,byte[] yuv,String strTemplatePath);
 	private native void setJNIEnv(String strTemplatePath);
 	static

@@ -628,8 +628,8 @@ string separateCarStr(Mat &image)
 	for(;it!=vlist.end();it++)
 	{
 		if( fabs((it->x + it->x + it->w)/2.0 - fBeforeX) < 3 ) continue;
-		if(it->x < 3) continue;
-		if(image.size().width - (it->x + it->w) < 3 ) continue;
+		if(it->x < 2) continue;
+		if(image.size().width - (it->x + it->w) < 2 ) continue;
 		str += it->strWord;
 		fBeforeX = (it->x + it->x + it->w)/2.0;
 		//cout << "seq:" << it->title << " X:" << it->x << " rt_width:" << it->w << " rt_height:" << it->h << " " << it->strWord  << endl;

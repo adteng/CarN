@@ -1,13 +1,7 @@
 package com.teng.carn;
 
-import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
@@ -16,8 +10,6 @@ import android.graphics.ImageFormat;
 import android.graphics.Rect;
 import android.graphics.YuvImage;
 import android.hardware.Camera;
-import android.hardware.Camera.PictureCallback;
-import android.hardware.Camera.ShutterCallback;
 import android.hardware.Camera.Size;
 import android.os.Bundle;
 import android.os.Environment;
@@ -64,6 +56,8 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     private SVDraw  mSVDraw = null;
     Thread m_setFocusThread;	
     int m_iSleep = 1000;
+    int m_iSurfaceH;
+    int m_iSurfaceW;
     
     Handler m_handler = new Handler(){
         public void handleMessage(Message msg) {
@@ -82,7 +76,8 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         		int iSum = Integer.parseInt(s[0]);
         		if(iSum > 0 && s.length > 4)
         		{
-        			Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
+        			//Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
+        			Rect r = new Rect(Integer.parseInt(s[1])*m_iSurfaceW/size.height,Integer.parseInt(s[2])*m_iSurfaceH/size.width,Integer.parseInt(s[3])*m_iSurfaceW/size.height,Integer.parseInt(s[4])*m_iSurfaceH/size.width);
         			mSVDraw.drawRect(r);
         			TextView v2 = (TextView)findViewById(R.id.textView2);
         			v2.setText(s[5]);
@@ -91,13 +86,13 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
         			if(strNumStr != null && strNumStr!=""  && strNumStr.length() == 7 && strNumStr.getBytes().length == 9 && strNumStr.substring(0,1).getBytes().length == 3)
         				m_iSleep = 15000;
         			else
-        				m_iSleep = 50;
+        				m_iSleep = 10;
         		}
         		else
         			mSVDraw.clearDraw();
         		
         		TextView v1 = (TextView)findViewById(R.id.textView1);
-        		v1.setText(str);
+        		v1.setText("m_iSurfaceW:" + m_iSurfaceW + " m_iSurfaceH:" + m_iSurfaceH + " preW:" + size.width + " preH:" + size.height);
         		synchronized (m_setFocusThread)
         		{
         			m_setFocusThread.notifyAll();
@@ -245,10 +240,11 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 	public void surfaceChanged(SurfaceHolder holder, int format, int width,
 			int height) {
 		// TODO Auto-generated method stub
+		m_iSurfaceH = height;
+		m_iSurfaceW = width;
 		//Log.i("jefry", "w="+width+"  h="+height);
 		//Log.i("jefry", "1111111111111111111111111111111111111111111111111");	
 		//initCamera();
-		
 	}
 
 	@Override
@@ -270,10 +266,6 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
                 System.exit(0);
             }
             mCamera.setPreviewDisplay(holder);//设置显示面板控制器
-            if(this.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE)
-            	mCamera.setDisplayOrientation(90);
-            else
-            	mCamera.setDisplayOrientation(0);  
             android.hardware.Camera.Parameters params = mCamera.getParameters();
             m_iMaxZoom = params.getMaxZoom();
 
@@ -281,6 +273,12 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             params.setPreviewFormat(ImageFormat.NV21);  
             //params.setPictureSize(480,640);
             params.setPreviewSize(960, 720);
+            
+            if(this.getResources().getConfiguration().orientation != Configuration.ORIENTATION_LANDSCAPE)
+            	mCamera.setDisplayOrientation(90);
+            else
+            	mCamera.setDisplayOrientation(0);  
+   
             
             /*List<String> focusModes = params.getSupportedFocusModes();  
             if(focusModes.contains("continuous-video")){  
@@ -314,123 +312,17 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 		// TODO Auto-generated method stub
 		Log.i("jefry", "2222222222222222222222222222222222222222222222222222");
         stopCamera();
-      //camera.stopPreview();
         mCamera.setPreviewCallback(null) ;
         mCamera.release();
         mCamera = null;
 	}
-	/* 拍照的method */
-    private void takePicture() {
-        if (mCamera != null) {
-            mCamera.takePicture(shutterCallback, rawCallback, jpegCallback);
-        }
-    }
-
-    private ShutterCallback shutterCallback = new ShutterCallback() {
-        public void onShutter() {
-            /* 按下快门瞬间会调用这里的程序 */
-        	Log.w("jefry", "shutterCallback");
-        }
-    };
-
-    private PictureCallback rawCallback = new PictureCallback() {
-        public void onPictureTaken(byte[] _data, Camera _camera) {
-            /* 要处理raw data?写?否 */
-        	Log.w("============", "rawCallback");
-        }
-    };
-
-    //在takepicture中调用的回调方法之一，接收jpeg格式的图像
-    private PictureCallback jpegCallback = new PictureCallback() {
-        public void onPictureTaken(byte[] _data, Camera _camera) {
-
-            /*
-             * if (Environment.getExternalStorageState().equals(
-             * Environment.MEDIA_MOUNTED)) // 判断SD卡是否存在，并且可以可以读写 {
-             * 
-             * } else { Toast.makeText(EX07_16.this, "SD卡不存在或写保护",
-             * Toast.LENGTH_LONG) .show(); }
-             */
-            // Log.w("============", _data[55] + "");
-        	Log.w("============", strCaptureFilePath + "/1.jpg");
-            try {
-                /* 取得相片 */
-                Bitmap bm = BitmapFactory.decodeByteArray(_data, 0,
-                        _data.length);
-
-                /* 创建文件 */
-                File myCaptureFile = new File(strCaptureFilePath, "1.jpg");
-                BufferedOutputStream bos = new BufferedOutputStream(
-                        new FileOutputStream(myCaptureFile));
-                /* 采用压缩转档方法 */
-                bm.compress(Bitmap.CompressFormat.JPEG, 100, bos);
-
-                /* 调用flush()方法，更新BufferStream */
-                bos.flush();
-
-                /* 结束OutputStream */
-                bos.close();
-
-                /* 让相片显示3秒后圳重设相机 */
-                // Thread.sleep(2000);
-                /* 重新设定Camera */
-                stopCamera();
-                initCamera();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    };
-
     /* 自定义class AutoFocusCallback */
     public final class MyAutoFocusCallback implements
             android.hardware.Camera.AutoFocusCallback {
         public void onAutoFocus(boolean focused, Camera camera) {
         	Log.w("jefry","111111111111111");
             /* 对到焦点拍照 */
-            if (focused && m_bFocus) {
-            	Log.w("2222222222222","22222222222222");
-                //takePicture();
-            	Size size = mCamera.getParameters().getPreviewSize(); //获取预览大小
-            	synchronized(m_strLock)
-            	{
-            		Log.i("jefry", "w="+size.width+"  h="+size.height);
-            		String strOP;
-            		if(m_bTakingPicture)
-            			strOP = "true";
-            		else
-            			strOP = "false";
-            		String str = getStringNumber(size.width,size.height,mBuffer,strOP/*"/storage/sdcard1/carnumber/65_car/65_car"*/);
-            		String[] s = str.split(",");
-            		int iSum = Integer.parseInt(s[0]);
-            		if(iSum > 0 && s.length > 4)
-            		{
-            			Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
-            			mSVDraw.drawRect(r);
-            		}
-            		else
-            			mSVDraw.clearDraw();
-            		Log.i("result", str);	
-            		TextView v = (TextView)findViewById(R.id.textView1);
-            		v.setText(str);
-            		if(m_bTakingPicture)
-            		{
-            			m_bTakingPicture = false;
-            			FileInputStream fis =null;
-            			try {
-            				fis = new FileInputStream("/storage/emulated/0/data/morph.jpg");
-            			} 
-            			catch (FileNotFoundException e) 
-            			{
-            				// TODO Auto-generated catch block
-            				e.printStackTrace();
-            			}
-            			Bitmap bm=BitmapFactory.decodeStream(fis);
-            			ImageView img = (ImageView)findViewById(R.id.send_image);
-            			img.setImageBitmap(bm);		
-            		}
-            	}
-            	
+            if (focused && m_bFocus) {            	
             }
             m_bFocus = false;
         }

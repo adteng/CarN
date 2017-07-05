@@ -469,10 +469,10 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 	vector<vector<Point> >::iterator itc= contours.begin();
 	while (itc!=contours.end()) 
 	{	 
-		double tmparea = fabs(contourArea(*itc));//面积
-		double contLenth =  arcLength(*itc,true);//周长
-		double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//与圆的近似度
-		
+		//double tmparea = fabs(contourArea(*itc));//面积
+		//double contLenth =  arcLength(*itc,true);//周长
+		//double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//与圆的近似度
+		/*
 		RotatedRect minRect = minAreaRect(*itc);  
 		Point2f vertices[4];  
 		minRect.points(vertices); //获得最小外接矩形4个点
@@ -493,8 +493,9 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		Point2f center;//圆心  
 		float radius;//半径 
 		minEnclosingCircle(*itc, center, radius);
-		
+		*/
 		Rect rt = boundingRect(*itc);//包含轮廓的矩形
+		/*
 		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
 		if(l > 100)
 		{
@@ -502,8 +503,13 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		}
 		else if(Afa < 0.08)
 			itc = contours.erase(itc);
-		else if(rt.width < oriMat.cols/8)
+		
+		else*/if(rt.width < oriMat.size().width/8)
 			itc = contours.erase(itc);
+		else if( rt.width > rt.height * 3.5 )
+			itc = contours.erase(itc);
+		else if( rt.width < rt.height * 2.5 )
+			itc = contours.erase(itc);	
 		else
 		{
 			char sTmp[64] = {0};
@@ -588,11 +594,10 @@ string separateCarStr(Mat &image)
 	vector<vector<Point> >::iterator itc= contours.begin();
 	while (itc!=contours.end()) 
 	{	 
-		double tmparea = fabs(contourArea(*itc));//面积	
-			
-		RotatedRect minRect = minAreaRect(*itc);
-		Point2f vertices[4];  
-		minRect.points(vertices); //获得最小外接矩形4个点
+		//double tmparea = fabs(contourArea(*itc));//面积	
+		//RotatedRect minRect = minAreaRect(*itc);
+		//Point2f vertices[4];  
+		//minRect.points(vertices); //获得最小外接矩形4个点
 		Rect rt = boundingRect(*itc);
 		if(rt.height < image.size().height * 22.0/43.0)
 			itc = contours.erase(itc);

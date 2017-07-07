@@ -12,6 +12,9 @@ typedef struct _NumberElement
 
 CALL_BACK_SHOW_IMAGE_FUN pShowImage;
 CALL_BACK_SHOW_MSG_FUN pShowMsg;
+CALL_BACK_DRAW_RECT_FUN pDrawRectangle;
+
+bool g_running = true;
 
 void setShowImgFun(CALL_BACK_SHOW_IMAGE_FUN f)
 {
@@ -20,6 +23,14 @@ void setShowImgFun(CALL_BACK_SHOW_IMAGE_FUN f)
 void setShowMsgFun(CALL_BACK_SHOW_MSG_FUN f)
 {
 	pShowMsg = f;
+}
+void setDrawRectangleFun(CALL_BACK_DRAW_RECT_FUN f)
+{
+	pDrawRectangle = f;
+}
+void breakRunning()
+{
+	g_running = false;
 }
 
 bool cmp(NumberElement a,NumberElement b)
@@ -90,7 +101,7 @@ int loadfile(const char* dirname)
     return m_vt.size();
 }
 
-void getPXSum(Mat &src, int &a)//»ñÈ¡ËùÓĞÏñËØµãºÍ
+void getPXSum(Mat &src, int &a)//è·å–æ‰€æœ‰åƒç´ ç‚¹å’Œ
 { 
 	threshold(src, src, 0, 255, CV_THRESH_BINARY |CV_THRESH_OTSU);
 	  a = 0;
@@ -103,7 +114,7 @@ void getPXSum(Mat &src, int &a)//»ñÈ¡ËùÓĞÏñËØµãºÍ
 	}
 }
 
-string  getSubtract(Mat &src) //Á½ÕÅÍ¼Æ¬Ïà¼õ
+string  getSubtract(Mat &src) //ä¸¤å¼ å›¾ç‰‡ç›¸å‡
 {
 	int min = 1000000;
 	string strNumber = "";
@@ -133,7 +144,7 @@ string MarkingImg1(int width,int height,uchar *_yuv,const char *dir)
     cvtColor(myuv, mbgr, CV_YUV420sp2BGR);
     
     Mat t,o;
- 	transpose(mbgr,t);//×ª90¶È
+ 	transpose(mbgr,t);//è½¬90åº¦
  	flip(t,o,1);
  	
  	IplImage f = IplImage(o);
@@ -142,48 +153,48 @@ string MarkingImg1(int width,int height,uchar *_yuv,const char *dir)
 //LOGI("save1 result:%d,w:%d,h:%d",iret,frame->width,frame->height);
 //(*pShowImage)((const uchar*)frame->imageData,frame->imageSize,0);
 
- 	//¾ùÖµÂË²¨  
+ 	//å‡å€¼æ»¤æ³¢  
 	cvSmooth(frame, frame, CV_MEDIAN);  
 	//cvSmooth(frame, frame, CV_GAUSSIAN, 3, 3); 
-	//»Ò¶ÈÍ¼  
+	//ç°åº¦å›¾  
 	IplImage * gray = cvCreateImage(cvGetSize(frame), frame->depth, 1);  
 	cvCvtColor(frame, gray, CV_BGR2GRAY);  
 	//cvNamedWindow("gray", 1);  
 	//cvShowImage("gray", gray);  
 
-	//±ßÔµ¼ì²â  
+	//è¾¹ç¼˜æ£€æµ‹  
 	IplImage * temp = cvCreateImage(cvGetSize(gray), IPL_DEPTH_16S,1);  
-	//x·½ÏòÌİ¶È£¬´¹Ö±±ßÔµ  
+	//xæ–¹å‘æ¢¯åº¦ï¼Œå‚ç›´è¾¹ç¼˜  
 	cvSobel(gray, temp, 2, 0, 3);  
 	IplImage * sobel = cvCreateImage(cvGetSize(temp), IPL_DEPTH_8U,1);  
 	cvConvertScale(temp, sobel, 1, 0);  
 	//cvNamedWindow("sobel", 1);  
 	//cvShowImage("sobel", sobel);  
  		
-	//¶şÖµ»¯
+	//äºŒå€¼åŒ–
 	IplImage * threshold = cvCreateImage(cvGetSize(sobel), gray->depth, 1);
 	cvThreshold(sobel, threshold, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
 (*pShowImage)((const uchar*)threshold->imageData,threshold->imageSize,1);
 
-	//ĞÎÌ¬Ñ§±ä»¯
+	//å½¢æ€å­¦å˜åŒ–
 	IplConvKernel * kernal;
 	IplImage * morph = cvCreateImage(cvGetSize(threshold), threshold->depth, 1);
-	//×Ô¶¨Òå 1x3 µÄºË½øĞĞ x ·½ÏòµÄÅòÕÍ¸¯Ê´	
+	//è‡ªå®šä¹‰ 1x3 çš„æ ¸è¿›è¡Œ x æ–¹å‘çš„è†¨èƒ€è…èš€	
 	kernal = cvCreateStructuringElementEx(3, 1, 1, 0, CV_SHAPE_RECT);
-	cvDilate(threshold, morph, kernal, 4);   //x ÅòÕÍÁªÍ¨Êı×Ö
-	cvErode(morph, morph, kernal, 4);    //x ¸¯Ê´È¥³ıËéÆ¬
-	cvDilate(morph, morph, kernal, 4);   //x ÅòÕÍ»Ø¸´ĞÎÌ¬
+	cvDilate(threshold, morph, kernal, 4);   //x è†¨èƒ€è”é€šæ•°å­—
+	cvErode(morph, morph, kernal, 4);    //x è…èš€å»é™¤ç¢ç‰‡
+	cvDilate(morph, morph, kernal, 4);   //x è†¨èƒ€å›å¤å½¢æ€
 	cvReleaseStructuringElement(&kernal);
-	//×Ô¶¨Òå 3x1 µÄºË½øĞĞ y ·½ÏòµÄÅòÕÍ¸¯Ê´
+	//è‡ªå®šä¹‰ 3x1 çš„æ ¸è¿›è¡Œ y æ–¹å‘çš„è†¨èƒ€è…èš€
 	kernal = cvCreateStructuringElementEx(1, 3, 0, 1, CV_SHAPE_RECT);
-	cvErode(morph, morph, kernal, 1);    //y ¸¯Ê´È¥³ıËéÆ¬
-	cvDilate(morph, morph, kernal, 3);   //y ÅòÕÍ»Ø¸´ĞÎÌ¬	
+	cvErode(morph, morph, kernal, 1);    //y è…èš€å»é™¤ç¢ç‰‡
+	cvDilate(morph, morph, kernal, 3);   //y è†¨èƒ€å›å¤å½¢æ€	
 	cvReleaseStructuringElement(&kernal);
 //iret = cvSaveImage("/storage/emulated/0/data/morph.jpg",morph);
 //LOGI("save3 result:%d",iret);
 //(*pShowImage)((const uchar *)morph->imageData,morph->imageSize,2);
 
-	//ÂÖÀª¼ì²â
+	//è½®å»“æ£€æµ‹
 	IplImage *plate_img = NULL; 
 	IplImage * frame_draw = cvCreateImage(cvGetSize(frame), frame->depth, frame->nChannels);
 	cvCopy(frame, frame_draw);
@@ -197,27 +208,27 @@ string MarkingImg1(int width,int height,uchar *_yuv,const char *dir)
 		CvRect aRect = cvBoundingRect( contour, 0 );
 		if(tmparea > ((frame->height*frame->width)/10))   
 		{  
-			cvSeqRemove(contour,0); //É¾³ıÃæ»ıĞ¡ÓÚÉè¶¨ÖµµÄÂÖÀª,1/10
+			cvSeqRemove(contour,0); //åˆ é™¤é¢ç§¯å°äºè®¾å®šå€¼çš„è½®å»“,1/10
 			continue;  
 		} 
 		if (aRect.width < (aRect.height*2))
 		{  
-			cvSeqRemove(contour,0); //É¾³ı¿í¸ß±ÈÀıĞ¡ÓÚÉè¶¨ÖµµÄÂÖÀª   
+			cvSeqRemove(contour,0); //åˆ é™¤å®½é«˜æ¯”ä¾‹å°äºè®¾å®šå€¼çš„è½®å»“   
 			continue;  
 		}
 		if ((aRect.width/aRect.height) > 4 )
 		{  
-			cvSeqRemove(contour,0); //É¾³ı¿í¸ß±ÈÀıĞ¡ÓÚÉè¶¨ÖµµÄÂÖÀª   
+			cvSeqRemove(contour,0); //åˆ é™¤å®½é«˜æ¯”ä¾‹å°äºè®¾å®šå€¼çš„è½®å»“   
 			continue;  
 		}
 		if((aRect.height * aRect.width) < ((frame->height * frame->width)/100))
 		{  
-			cvSeqRemove(contour,0); //É¾³ı¿í¸ß±ÈÀıĞ¡ÓÚÉè¶¨ÖµµÄÂÖÀª   
+			cvSeqRemove(contour,0); //åˆ é™¤å®½é«˜æ¯”ä¾‹å°äºè®¾å®šå€¼çš„è½®å»“   
 			continue;  
 		}
 		if(aRect.width  < 100 || aRect.width > 150)
 		{
-			cvSeqRemove(contour,0); //É¾³ı¿íĞ¡ÓÚÉè¶¨ÖµµÄÂÖÀª
+			cvSeqRemove(contour,0); //åˆ é™¤å®½å°äºè®¾å®šå€¼çš„è½®å»“
 			continue;  
 		}
 		//(aRect.x + aRect.width/2,aRect.y + aRect.height/2)   (morph.width/2,morph.height/2)
@@ -229,7 +240,7 @@ string MarkingImg1(int width,int height,uchar *_yuv,const char *dir)
 		}
 		
 		CvScalar color = CV_RGB( 255, 0, 0); 
-		cvDrawContours(frame_draw, contour, color, color, 0, 1, 8 );//»æÖÆÍâ²¿ºÍÄÚ²¿µÄÂÖÀª
+		cvDrawContours(frame_draw, contour, color, color, 0, 1, 8 );//ç»˜åˆ¶å¤–éƒ¨å’Œå†…éƒ¨çš„è½®å»“
 		//cout << "last w=" << aRect.width << ",h=" << aRect.height << " x=" << aRect.x << " y=" <<  aRect.y << endl;
 	
 		cvSetImageROI(frame,  aRect);
@@ -255,22 +266,22 @@ string MarkingImg1(int width,int height,uchar *_yuv,const char *dir)
 	
 	//cvSaveImage("1.bmp",plate_img);
 	
-	//»Ò¶ÈÍ¼  
+	//ç°åº¦å›¾  
 	IplImage * grayPlate = cvCreateImage(cvGetSize(plate_img), plate_img->depth, 1);  
 	cvCvtColor(plate_img, grayPlate, CV_BGR2GRAY);
 	
-	//¶şÖµ»¯
+	//äºŒå€¼åŒ–
 	IplImage * thresholdPlate = cvCreateImage(cvGetSize(grayPlate), grayPlate->depth, 1);
 	cvThreshold(grayPlate, thresholdPlate, 0, 255, CV_THRESH_BINARY|CV_THRESH_OTSU);
 	IplImage * frame_bi = cvCreateImage(cvGetSize(thresholdPlate), thresholdPlate->depth, thresholdPlate->nChannels);
 	cvCopy(thresholdPlate, frame_bi);
 	
-	//cvSmooth(thresholdPlate, thresholdPlate, CV_MEDIAN, 3, 0, 0, 0); //ÖĞÖµÂË²¨£¬Ïû³ıĞ¡µÄÔëÉù£»
+	//cvSmooth(thresholdPlate, thresholdPlate, CV_MEDIAN, 3, 0, 0, 0); //ä¸­å€¼æ»¤æ³¢ï¼Œæ¶ˆé™¤å°çš„å™ªå£°ï¼›
 	//cvDilate(thresholdPlate, thresholdPlate, 0, 1);
 	//cvErode(thresholdPlate, thresholdPlate, 0, 2);
 
-//cvNamedWindow("ÂÖÀª", 1);
-//cvShowImage("ÂÖÀª", thresholdPlate);
+//cvNamedWindow("è½®å»“", 1);
+//cvShowImage("è½®å»“", thresholdPlate);
 int iret = cvSaveImage("/storage/emulated/0/data/thresholdPlate.jpg",morph);
 LOGI("save4 result:%d",iret);
 
@@ -285,7 +296,7 @@ LOGI("save4 result:%d",iret);
 		CvRect aRect = cvBoundingRect( seq, 0 ); 
 		if (aRect.height < 10)
 		{
-			cvSeqRemove(seq,0); //É¾³ı¿íĞ¡ÓÚÉè¶¨ÖµµÄÂÖÀª
+			cvSeqRemove(seq,0); //åˆ é™¤å®½å°äºè®¾å®šå€¼çš„è½®å»“
 			continue;
 		}
 		cvSetImageROI(frame_bi,  aRect);
@@ -324,8 +335,8 @@ LOGI("save4 result:%d",iret);
 		numberVector.push_back(ne);
 	}
 	sort(numberVector.begin(),numberVector.end(),cmp);
-	//	cvNamedWindow("¾©", 1);
-	//	cvShowImage("¾©", numberVector.begin()->plate_number);
+	//	cvNamedWindow("äº¬", 1);
+	//	cvShowImage("äº¬", numberVector.begin()->plate_number);
 	
 	for(vector<NumberElement>::iterator it = numberVector.begin();it!=numberVector.end();it++)
 	{
@@ -356,7 +367,7 @@ string MarkingImg2(int width,int height,uchar *_yuv,const char *dir)
     cvtColor(myuv, mbgr, CV_YUV420sp2BGR);
     
     Mat t,oriMat;
- 	transpose(mbgr,t);//×ª90¶È
+ 	transpose(mbgr,t);//è½¬90åº¦
  	flip(t,oriMat,1);
  	
  	Mat w_mat = oriMat.clone();
@@ -378,13 +389,13 @@ string MarkingImg2(int width,int height,uchar *_yuv,const char *dir)
 	vector<vector<Point> >::iterator itc= contours.begin();
 	while (itc!=contours.end()) 
 	{	 
-		double tmparea = fabs(contourArea(*itc));//Ãæ»ı
-		double contLenth =  arcLength(*itc,true);//ÖÜ³¤
-		double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//ÓëÔ²µÄ½üËÆ¶È
+		double tmparea = fabs(contourArea(*itc));//é¢ç§¯
+		double contLenth =  arcLength(*itc,true);//å‘¨é•¿
+		double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//ä¸åœ†çš„è¿‘ä¼¼åº¦
 		
 		RotatedRect minRect = minAreaRect(*itc);  
 		Point2f vertices[4];  
-		minRect.points(vertices); //»ñµÃ×îĞ¡Íâ½Ó¾ØĞÎ4¸öµã
+		minRect.points(vertices); //è·å¾—æœ€å°å¤–æ¥çŸ©å½¢4ä¸ªç‚¹
 		double L1 = sqrt((vertices[0].x-vertices[1].x) * (vertices[0].x-vertices[1].x) + (vertices[0].y-vertices[1].y) * (vertices[0].y-vertices[1].y));
 		double L2 = sqrt((vertices[2].x-vertices[1].x) * (vertices[2].x-vertices[1].x) + (vertices[2].y-vertices[1].y) * (vertices[2].y-vertices[1].y));
 		float angle;
@@ -398,12 +409,12 @@ string MarkingImg2(int width,int height,uchar *_yuv,const char *dir)
 		else
 			angle = atan2((vertices[2].y-vertices[1].y),(vertices[2].x-vertices[1].x)) * 180.0/CV_PI;
 		
-		//×îĞ¡Íâ½ÓÔ²
-		Point2f center;//Ô²ĞÄ  
-		float radius;//°ë¾¶  
+		//æœ€å°å¤–æ¥åœ†
+		Point2f center;//åœ†å¿ƒ  
+		float radius;//åŠå¾„  
 		minEnclosingCircle(*itc, center, radius);
 		
-		Rect rt = boundingRect(*itc);//°üº¬ÂÖÀªµÄ¾ØĞÎ
+		Rect rt = boundingRect(*itc);//åŒ…å«è½®å»“çš„çŸ©å½¢
 		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
 		if(l > 20)
 		{
@@ -430,13 +441,14 @@ string MarkingImg2(int width,int height,uchar *_yuv,const char *dir)
 */
 string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 {
+	g_running = true;
 	string strValues = "";
     Mat myuv(height+height/2, width, CV_8UC1,_yuv);
     Mat mbgr(height, width, CV_8UC3, cv::Scalar(0,0,255));
     cvtColor(myuv, mbgr, CV_YUV420sp2BGR);
     
     Mat t,oriMat;
- 	transpose(mbgr,t);//×ª90¶È
+ 	transpose(mbgr,t);//è½¬90åº¦
  	flip(t,oriMat,1);
 
 //(*pShowImage)(oriMat.data,oriMat.step[0]*oriMat.rows,oriMat.cols,oriMat.rows);
@@ -469,13 +481,13 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 	vector<vector<Point> >::iterator itc= contours.begin();
 	while (itc!=contours.end()) 
 	{	 
-		//double tmparea = fabs(contourArea(*itc));//Ãæ»ı
-		//double contLenth =  arcLength(*itc,true);//ÖÜ³¤
-		//double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//ÓëÔ²µÄ½üËÆ¶È
+		//double tmparea = fabs(contourArea(*itc));//é¢ç§¯
+		//double contLenth =  arcLength(*itc,true);//å‘¨é•¿
+		//double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//ä¸åœ†çš„è¿‘ä¼¼åº¦
 		/*
 		RotatedRect minRect = minAreaRect(*itc);  
 		Point2f vertices[4];  
-		minRect.points(vertices); //»ñµÃ×îĞ¡Íâ½Ó¾ØĞÎ4¸öµã
+		minRect.points(vertices); //è·å¾—æœ€å°å¤–æ¥çŸ©å½¢4ä¸ªç‚¹
 		double L1 = sqrt((vertices[0].x-vertices[1].x) * (vertices[0].x-vertices[1].x) + (vertices[0].y-vertices[1].y) * (vertices[0].y-vertices[1].y));
 		double L2 = sqrt((vertices[2].x-vertices[1].x) * (vertices[2].x-vertices[1].x) + (vertices[2].y-vertices[1].y) * (vertices[2].y-vertices[1].y));
 		float angle;
@@ -489,12 +501,12 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		else
 			angle = atan2((vertices[2].y-vertices[1].y),(vertices[2].x-vertices[1].x)) * 180.0/CV_PI;
 		
-		//×îĞ¡Íâ½ÓÔ²
-		Point2f center;//Ô²ĞÄ  
-		float radius;//°ë¾¶ 
+		//æœ€å°å¤–æ¥åœ†
+		Point2f center;//åœ†å¿ƒ  
+		float radius;//åŠå¾„ 
 		minEnclosingCircle(*itc, center, radius);
 		*/
-		Rect rt = boundingRect(*itc);//°üº¬ÂÖÀªµÄ¾ØĞÎ
+		Rect rt = boundingRect(*itc);//åŒ…å«è½®å»“çš„çŸ©å½¢
 		/*
 		double l = sqrt((center.x - gray_bi.size().width/2) * (center.x - gray_bi.size().width/2) + (center.y - gray_bi.size().height/2) * (center.y - gray_bi.size().height/2));
 		if(l > 100)
@@ -519,10 +531,13 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 			itc++;
 			Mat image_roi = oriMat(rt).clone();
 			(*pShowImage)(image_roi.data,image_roi.step[0]*image_roi.rows,image_roi.cols,image_roi.rows);
+			(*pDrawRectangle)(rt.x,rt.y,rt.x + rt.width,rt.y + rt.height);
 			string strNum = separateCarStr(image_roi);
-			if(strNum.empty() || strNum=="" ) strNum = "0";
-			str += strNum;
-			break;
+			if(!strNum.empty())
+				(*pShowMsg)((uchar *)strNum.c_str(),strNum.length());
+			
+			//str += strNum;
+			if(!g_running) break;
 //imwrite("/storage/emulated/0/data/car_sno.jpg",image_roi);
 		}
 	}
@@ -536,13 +551,13 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 
 Mat Operater(Mat &gray)
 {
-	//¸ßË¹ÂË²¨Æ÷ÂË²¨È¥Ôë£¨¿ÉÑ¡£©
+	//é«˜æ–¯æ»¤æ³¢å™¨æ»¤æ³¢å»å™ªï¼ˆå¯é€‰ï¼‰
 	int ksize = 3;
 	Mat g_gray;
 	Mat G_kernel = getGaussianKernel(ksize,0.3*((ksize-1)*0.5-1)+0.8);
 	filter2D(gray,g_gray,-1,G_kernel);
 
-/*	//SobelËã×Ó£¨x·½ÏòºÍy·½Ïò£©
+/*	//Sobelç®—å­ï¼ˆxæ–¹å‘å’Œyæ–¹å‘ï¼‰
 	Mat sobel_x,sobel_y;
 	Sobel(g_gray,sobel_x,CV_16S,1,0,3);
 	Sobel(g_gray,sobel_y,CV_16S,0,1,3); 
@@ -554,9 +569,9 @@ Mat Operater(Mat &gray)
 	*/
 	Mat detected_edges;
 	blur( g_gray, detected_edges, Size(3,3) );
-	/// ÔËĞĞCannyËã×Ó
+	/// è¿è¡ŒCannyç®—å­
 	Canny( detected_edges, detected_edges, 80, 80*2.5, 3 );
-	/// Ê¹ÓÃ CannyËã×ÓÊä³ö±ßÔµ×÷ÎªÑÚÂëÏÔÊ¾Ô­Í¼Ïñ
+	/// ä½¿ç”¨ Cannyç®—å­è¾“å‡ºè¾¹ç¼˜ä½œä¸ºæ©ç æ˜¾ç¤ºåŸå›¾åƒ
 	/*
 	dst = Scalar::all(0);
 	src.copyTo( dst, detected_edges);
@@ -594,10 +609,10 @@ string separateCarStr(Mat &image)
 	vector<vector<Point> >::iterator itc= contours.begin();
 	while (itc!=contours.end()) 
 	{	 
-		//double tmparea = fabs(contourArea(*itc));//Ãæ»ı	
+		//double tmparea = fabs(contourArea(*itc));//é¢ç§¯	
 		//RotatedRect minRect = minAreaRect(*itc);
 		//Point2f vertices[4];  
-		//minRect.points(vertices); //»ñµÃ×îĞ¡Íâ½Ó¾ØĞÎ4¸öµã
+		//minRect.points(vertices); //è·å¾—æœ€å°å¤–æ¥çŸ©å½¢4ä¸ªç‚¹
 		Rect rt = boundingRect(*itc);
 		if(rt.height < image.size().height * 22.0/43.0)
 			itc = contours.erase(itc);
@@ -662,11 +677,11 @@ string separateCarStr(Mat &image)
 	vector<vector<Point> >::iterator itc= contours.begin();
 	while (itc!=contours.end()) 
 	{	 
-		double tmparea = fabs(contourArea(*itc));//Ãæ»ı	
+		double tmparea = fabs(contourArea(*itc));//é¢ç§¯	
 			
 		RotatedRect minRect = minAreaRect(*itc);
 		Point2f vertices[4];  
-		minRect.points(vertices); //»ñµÃ×îĞ¡Íâ½Ó¾ØĞÎ4¸öµã
+		minRect.points(vertices); //è·å¾—æœ€å°å¤–æ¥çŸ©å½¢4ä¸ªç‚¹
 		Rect rt = boundingRect(*itc);
 		if(rt.height < image.rows /4.0)
 			itc = contours.erase(itc);

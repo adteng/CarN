@@ -6,6 +6,7 @@ jobject g_obj;
 bool myAttachCurrentThread(void** env );
 void ShowData(const unsigned char *pData,int iDataLen,int iWidth,int iHeight);
 void ShowMsg(const unsigned char *pData,int iDataLen);
+void DrawRectangle(int x,int y,int width,int height);
 
 JNIEXPORT void JNICALL Java_com_teng_carn_MainActivity_setJNIEnv
   (JNIEnv *env, jobject obj,jstring strDir)
@@ -13,11 +14,18 @@ JNIEXPORT void JNICALL Java_com_teng_carn_MainActivity_setJNIEnv
         env->GetJavaVM(&g_jvm);
         setShowImgFun(&ShowData);
         setShowMsgFun(&ShowMsg);
+        setDrawRectangleFun(&DrawRectangle);
         g_obj = env->NewGlobalRef(obj);
         const char *dir = env->GetStringUTFChars(strDir, 0);
         loadfile(dir);
         env->ReleaseStringUTFChars(strDir, dir); 
 }
+JNIEXPORT void JNICALL Java_com_teng_carn_MainActivity_breakRunning
+  (JNIEnv *env, jobject obj)
+{
+	breakRunning();
+}
+
 
 JNIEXPORT jstring JNICALL Java_com_teng_carn_MainActivity_getStringNumber
   (JNIEnv * env, jobject obj, jint width, jint height, jbyteArray yuv, jstring strDir)
@@ -103,5 +111,21 @@ void ShowMsg(const unsigned char *pData,int iDataLen)
         }
 }
 
-
+void DrawRectangle(int x,int y,int width,int height)
+{
+	JNIEnv *env;
+	bool bAttach = myAttachCurrentThread((void**)&env);	
+	
+	jclass cls = env->GetObjectClass(g_obj);
+	jmethodID mDraw = env->GetMethodID(cls,"drawRect","(IIII)V");
+ 	env->CallVoidMethod(g_obj,mDraw,x,y,width,height);
+    env->DeleteLocalRef(cls);
+	
+	
+	if(bAttach)
+        if(g_jvm->DetachCurrentThread() != JNI_OK)
+        {
+                LOGE("%s: DetachCurrentThread() failed", __FUNCTION__);
+        }
+}
 

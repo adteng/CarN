@@ -26,9 +26,12 @@ using namespace cv;
 
 typedef  void(*CALL_BACK_SHOW_IMAGE_FUN)(const unsigned char*,int,int,int);
 typedef  void(*CALL_BACK_SHOW_MSG_FUN)(const unsigned char*,int);
+typedef  void(*CALL_BACK_DRAW_RECT_FUN)(int,int,int,int);
 
 void setShowImgFun(CALL_BACK_SHOW_IMAGE_FUN);
 void setShowMsgFun(CALL_BACK_SHOW_MSG_FUN);
+void setDrawRectangleFun(CALL_BACK_DRAW_RECT_FUN);
+void breakRunning();
 string MarkingImg(int,int,uchar *,const char*);
 //string MarkingImg1(int,int,uchar *,const char*);
 int loadfile(const char* dirname);

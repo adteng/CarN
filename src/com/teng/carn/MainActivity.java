@@ -2,6 +2,8 @@ package com.teng.carn;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+
 import android.graphics.Bitmap;
 import android.graphics.Bitmap.Config;
 import android.graphics.BitmapFactory;
@@ -55,49 +57,36 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     private boolean m_bFocus = false;
     private SVDraw  mSVDraw = null;
     Thread m_setFocusThread;	
-    int m_iSleep = 1000;
+    int m_iSleep = 10;
     int m_iSurfaceH;
     int m_iSurfaceW;
+    int m_iCamH;
+    int m_iCamW;
     
     Handler m_handler = new Handler(){
         public void handleMessage(Message msg) {
             switch (msg.what) {      
             case 1:
-            	Size size = mCamera.getParameters().getPreviewSize(); //获取预览大小
-	   			String str;
-	   			synchronized(m_strLock)
-	   			{
-	   				str = getStringNumber(size.width,size.height,mBuffer,"0");
-	   			}
-	   			Log.i("getStringNumber", str);
-
-            	Log.i("result", str);
+            	String str = (String) msg.obj;
         		String[] s = str.split(",");
         		int iSum = Integer.parseInt(s[0]);
-        		if(iSum > 0 && s.length > 4)
-        		{
-        			//Rect r = new Rect(Integer.parseInt(s[1])*2/3,Integer.parseInt(s[2])*2/3,Integer.parseInt(s[3])*2/3,Integer.parseInt(s[4])*2/3);
-        			Rect r = new Rect(Integer.parseInt(s[1])*m_iSurfaceW/size.height,Integer.parseInt(s[2])*m_iSurfaceH/size.width,Integer.parseInt(s[3])*m_iSurfaceW/size.height,Integer.parseInt(s[4])*m_iSurfaceH/size.width);
-        			mSVDraw.drawRect(r);
-        			TextView v2 = (TextView)findViewById(R.id.textView2);
-        			v2.setText(s[5]);
-        			String strNumStr = s[5];
-        			Log.i("11111111111111", strNumStr + " length:" + strNumStr.length() + " bytelen:" + strNumStr.getBytes().length + " firstlen:" + strNumStr.substring(0,1).getBytes().length);
-        			if(strNumStr != null && strNumStr!=""  && strNumStr.length() == 7 && strNumStr.getBytes().length == 9 && strNumStr.substring(0,1).getBytes().length == 3)
-        				m_iSleep = 15000;
-        			else
-        				m_iSleep = 10;
-        		}
-        		else
-        			mSVDraw.clearDraw();
-        		
+        		if(iSum == 0) mSVDraw.clearDraw();
         		TextView v1 = (TextView)findViewById(R.id.textView1);
-        		v1.setText("m_iSurfaceW:" + m_iSurfaceW + " m_iSurfaceH:" + m_iSurfaceH + " preW:" + size.width + " preH:" + size.height);
-        		synchronized (m_setFocusThread)
-        		{
-        			m_setFocusThread.notifyAll();
-        		}
-        		
+        		v1.setText(str);
+                break;
+            case 2:
+            	String strNum = (String) msg.obj;
+        		TextView v2 = (TextView)findViewById(R.id.textView2);
+        		v2.setText(strNum);
+            	break;
+            case 3:
+            	Rect r = (Rect) msg.obj;
+            	mSVDraw.drawRect(r);
+            	break;
+            case 4:
+            	Bitmap bm = (Bitmap) msg.obj;
+            	ImageView v = (ImageView)findViewById(R.id.send_image);
+                v.setImageBitmap(bm);
                 break;
             default:
             	break;
@@ -209,25 +198,25 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
 					}
         	   		while(mCamera != null)
         	   		{
+        	   			Size size = mCamera.getParameters().getPreviewSize(); //获取预览大小
+        	   			String str = "";
+        	   					synchronized(m_strLock)
+                	   			{
+        	   					str = getStringNumber(size.width,size.height,mBuffer,"0");
+                	   			}
+        	   					try 
+                	   			{
+        	   						Thread.sleep(m_iSleep);
+                	   			} 
+                	   			catch (InterruptedException e) 
+                	   			{
+                	   				// TODO Auto-generated catch block
+                	   				e.printStackTrace();
+                	   			}  	   			
                 		Message message = new Message();      
                         message.what = 1;
-                        //message.obj = (String)str;
-                        
-             
-        	   			try 
-        	   			{
-        	   				synchronized (m_setFocusThread) 
-        	   				{
-        	   					m_handler.sendMessage(message);
-        	   					m_setFocusThread.wait();
-        	   				}
-        	   				Thread.sleep(m_iSleep);
-        	   			} 
-        	   			catch (InterruptedException e) 
-        	   			{
-        	   				// TODO Auto-generated catch block
-        	   				e.printStackTrace();
-        	   			}
+                        message.obj = (String)str;
+                        m_handler.sendMessage(message);
         	   		}
         	   	}
            };
@@ -278,6 +267,9 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
             	mCamera.setDisplayOrientation(90);
             else
             	mCamera.setDisplayOrientation(0);  
+            Size size = params.getPreviewSize();
+            m_iCamH = size.width;
+            m_iCamW = size.height;
    
             
             /*List<String> focusModes = params.getSupportedFocusModes();  
@@ -464,15 +456,42 @@ public class MainActivity extends Activity  implements SurfaceHolder.Callback {
     public void drawImage(int[] colors,int iWidth,int iHeight)
     {
     	Bitmap bm = Bitmap.createBitmap(colors, iWidth, iHeight, Config.ARGB_8888);
-    	ImageView v = (ImageView)findViewById(R.id.send_image);
-        v.setImageBitmap(bm);
+		Message message = new Message();      
+        message.what = 4;
+        message.obj = bm;
+        m_handler.sendMessage(message);
     }
     public void showMsg(byte[] pData,int iDataLen)
     {
-
+    	String strNumStr = null;
+		try {
+			strNumStr = new String(pData,"UTF-8");
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		Message message = new Message();      
+        message.what = 2;
+        message.obj = strNumStr;
+        m_handler.sendMessage(message);
+    	if(strNumStr != null && strNumStr!=""  && strNumStr.length() == 7 && strNumStr.getBytes().length == 9 && strNumStr.substring(0,1).getBytes().length == 3)
+    	{	m_iSleep = 15000;
+    		breakRunning();
+    	}
+		else
+			m_iSleep = 10;
+    }
+    public void drawRect(int x,int y,int w,int h)
+    {
+    	Rect r = new Rect(x*m_iSurfaceW/m_iCamW,y*m_iSurfaceH/m_iCamH,w*m_iSurfaceW/m_iCamW,h*m_iSurfaceH/m_iCamH);
+		Message message = new Message();      
+        message.what = 3;
+        message.obj = r;
+        m_handler.sendMessage(message);
     }
 	private native String getStringNumber(int w,int h,byte[] yuv,String strTemplatePath);
 	private native void setJNIEnv(String strTemplatePath);
+	private native void breakRunning();
 	static
 	{
 		System.loadLibrary("MarkingImg");

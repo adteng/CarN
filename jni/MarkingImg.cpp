@@ -48,6 +48,7 @@ vector<TempNumber> m_vt;
 string  getSubtract(Mat&);
 Mat Operater(Mat &gray);
 string separateCarStr(Mat &image);
+Mat rotateImage(const Mat &img, double degree,int iWidth,int iHeight);
 
 int loadfile(const char* dirname)
 {
@@ -484,7 +485,6 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		//double tmparea = fabs(contourArea(*itc));//面积
 		//double contLenth =  arcLength(*itc,true);//周长
 		//double Afa = (4 * CV_PI *  tmparea)/(contLenth * contLenth);//与圆的近似度
-		/*
 		RotatedRect minRect = minAreaRect(*itc);  
 		Point2f vertices[4];  
 		minRect.points(vertices); //获得最小外接矩形4个点
@@ -500,7 +500,7 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 		}
 		else
 			angle = atan2((vertices[2].y-vertices[1].y),(vertices[2].x-vertices[1].x)) * 180.0/CV_PI;
-		
+		/*
 		//最小外接圆
 		Point2f center;//圆心  
 		float radius;//半径 
@@ -529,7 +529,7 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 			str += sTmp;
 			i++;
 			itc++;
-			Mat image_roi = oriMat(rt).clone();
+			Mat image_roi = rotateImage(oriMat(rt).clone(), angle,(int)L2,(int)L1);//oriMat(rt).clone();
 			(*pShowImage)(image_roi.data,image_roi.step[0]*image_roi.rows,image_roi.cols,image_roi.rows);
 			(*pDrawRectangle)(rt.x,rt.y,rt.x + rt.width,rt.y + rt.height);
 			string strNum = separateCarStr(image_roi);
@@ -548,7 +548,41 @@ string MarkingImg(int width,int height,uchar *_yuv,const char *dir)
 	delete [] pRetBuffer; 
 	return str;
 }
-
+Mat rotateImage(const Mat &img, double degree,int iWidth,int iHeight)
+{
+    //degree = -degree;//warpAffine默认的旋转方向是逆时针，所以加负号表示转化为顺时针
+    double angle = degree  * CV_PI / 180.; // 弧度  
+    double a = sin(angle), b = cos(angle);
+    int width = img.cols;
+    int height = img.rows;
+    int width_rotate = iWidth;//int(height * fabs(a) + width * fabs(b));
+    int height_rotate = iHeight;//int(width * fabs(a) + height * fabs(b));
+	Vec3b v3b;
+	if(img.rows > 5 && img.cols > 5)
+		v3b = img.at<Vec3b>(5,5);
+	else
+		v3b = img.at<Vec3b>(0,0);
+    //旋转数组map
+    // [ m0  m1  m2 ] ===>  [ A11  A12   b1 ]
+    // [ m3  m4  m5 ] ===>  [ A21  A22   b2 ]
+    float map[6];
+    Mat map_matrix = Mat(2, 3, CV_32F, map);
+    // 旋转中心
+    CvPoint2D32f center = cvPoint2D32f(width / 2, height / 2);
+    CvMat map_matrix2 = map_matrix;
+    cv2DRotationMatrix(center, degree, 1.0, &map_matrix2);//计算二维旋转的仿射变换矩阵
+    map[2] += (width_rotate - width) / 2;
+    map[5] += (height_rotate - height) / 2;
+    Mat img_rotate;
+    //对图像做仿射变换
+    //CV_WARP_FILL_OUTLIERS - 填充所有输出图像的象素。
+    //如果部分象素落在输入图像的边界外，那么它们的值设定为 fillval.
+    //CV_WARP_INVERSE_MAP - 指定 map_matrix 是输出图像到输入图像的反变换，
+    warpAffine(img, img_rotate, map_matrix, Size(width_rotate,height_rotate), CV_INTER_CUBIC | CV_WARP_FILL_OUTLIERS, BORDER_CONSTANT, Scalar(v3b[0],v3b[1],v3b[2])/*1, 0, 0*/);
+	return img_rotate;
+	//Rect r( (width_rotate-iWidth)/2,(height_rotate-iHeight)/2,iWidth,iHeight);
+    //return img_rotate(r);
+}
 Mat Operater(Mat &gray)
 {
 	//高斯滤波器滤波去噪（可选）

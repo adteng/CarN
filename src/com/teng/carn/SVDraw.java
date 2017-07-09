@@ -47,11 +47,12 @@ public class SVDraw extends SurfaceView implements Callback {
 	@Override
 	public void surfaceDestroyed(SurfaceHolder holder) {
 		// TODO Auto-generated method stub
-
+		sh = null;
 	}
 	
 	void clearDraw()                             
-	{                                            
+	{       
+		if(sh == null) return;
 	    Canvas canvas = sh.lockCanvas();
 	    canvas.drawColor(Color.TRANSPARENT);
 	    Paint p = new Paint();
